@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const notificationSchema = new mongoose.Schema({
+const NotificationSchema = new mongoose.Schema({
   // Người nhận thông báo
   user_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -36,4 +36,4 @@ const notificationSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('notification', notificationSchema);
+module.exports = mongoose.model('notification', NotificationSchema);

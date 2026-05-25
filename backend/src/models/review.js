@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const reviewSchema = new mongoose.Schema({
+const ReviewSchema = new mongoose.Schema({
   // Lượt đánh giá phải gắn liền với một đơn hàng cụ thể đã hoàn thành
   order_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -17,7 +17,7 @@ const reviewSchema = new mongoose.Schema({
   
   store_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'retaurant',
+    ref: 'restaurant',
     required: [true, 'Phải có thông tin cửa hàng được đánh giá']
   },
   
@@ -45,4 +45,4 @@ const reviewSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('review', reviewSchema);
+module.exports = mongoose.model('review', ReviewSchema);

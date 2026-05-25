@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // =================================================================
 // Lưu cấu trúc này trực tiếp vào đơn hàng để đảm bảo "chốt giá" cố định tại thời điểm mua,
 // kể cả sau này chủ quán có tăng hay giảm giá món ăn trong bảng Menus.
-const orderItemSchema = new mongoose.Schema({
+const OrderItemSchema = new mongoose.Schema({
   item_id: {
     type: mongoose.Schema.Types.ObjectId,
     required: true
@@ -35,7 +35,7 @@ const orderItemSchema = new mongoose.Schema({
 // =================================================================
 // 2. ĐỊNH NGHĨA CHÍNH SCHEMA CHO COLLECTION 'orders'
 // =================================================================
-const orderSchema = new mongoose.Schema({
+const OrderSchema = new mongoose.Schema({
   // Tham chiếu tới Cửa hàng mà khách đặt món
   store_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -68,7 +68,7 @@ const orderSchema = new mongoose.Schema({
   }],
 
   // Nhúng mảng danh sách món ăn đã định nghĩa ở trên vào đơn hàng
-  items: [OrderItemSchema],
+  items: [orderItemSchema],
 
   // Thông tin giao hàng (BM 5)
   shipping_address: {
@@ -128,4 +128,4 @@ const orderSchema = new mongoose.Schema({
   timestamps: true 
 });
 
-module.exports = mongoose.model('order', orderSchema);
+module.exports = mongoose.model('order', OrderSchema);

@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
+const path = require('path');
+const bcrypt = require('bcryptjs');
 // Gọi file .env của backend để lấy link database bí mật
-require('dotenv').config({ path: './backend/.env' }); 
+require('dotenv').config({ path: path.join(__dirname, '../backend/src/.env') }); 
 
-// Khai báo cấu trúc tối giản để phục vụ việc nạp dữ liệu mẫu nhanh
-const UserSchema = new mongoose.Schema({
-  phone: String, full_name: String, email: String, role: String, credit_score: Number, status: String
-});
-const User = mongoose.model('User', UserSchema);
+// Import Model 'user' thực tế từ backend để đồng bộ
+const User = require('../backend/src/models/user');
 
 // Dữ liệu mẫu thô
 const mockUsers = [
@@ -17,13 +16,18 @@ const mockUsers = [
 async function seedDatabase() {
   try {
     console.log("⏳ Đang kết nối tới MongoDB Atlas Cloud...");
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI || "mongodb+srv://duydq206_db_user:duydq206@cluster0.imdxhvp.mongodb.net/OFOW_Database?retryWrites=true&w=majority");
     
     console.log("🧹 Đang dọn sạch dữ liệu cũ trong bảng users...");
     await User.deleteMany({}); 
     
+    // Băm mật khẩu mặc định "12345678" cho tất cả người dùng mẫu
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash("12345678", salt);
+    const usersWithPassword = mockUsers.map(user => ({ ...user, password: hashedPassword }));
+    
     console.log("🚀 Đang tự động nạp dữ liệu users mẫu mới...");
-    await User.insertMany(mockUsers);
+    await User.insertMany(usersWithPassword);
     
     console.log("🎉 Tự động nạp dữ liệu mẫu hoàn tất thành công!");
     process.exit(0);

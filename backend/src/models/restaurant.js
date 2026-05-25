@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const retaurantSchema = new mongoose.Schema({
+const restaurantSchema = new mongoose.Schema({
   // Liên kết 1-1 với tài khoản chủ quán (Người dùng có role = 'merchant')
   owner_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -49,4 +49,4 @@ const retaurantSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('retaurant', retaurantSchema);
+module.exports = mongoose.model('restaurant', restaurantSchema);

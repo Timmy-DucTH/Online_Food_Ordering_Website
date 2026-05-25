@@ -13,7 +13,7 @@ const app = express();
 app.use(cors());
 
 // express.json(): Bộ giải mã giúp Backend hiểu được dữ liệu định dạng JSON do Frontend gửi lên 
-// (Ví dụ: Khi khách hàng điền Form Đăng ký [cite: 126] hoặc tạo Đơn hàng[cite: 148], dữ liệu gửi lên dạng JSON sẽ được dịch ra thành Object trong code).
+// (Ví dụ: Khi khách hàng điền Form Đăng ký hoặc tạo Đơn hàng, dữ liệu gửi lên dạng JSON sẽ được dịch ra thành Object trong code).
 app.use(express.json());
 
 // express.urlencoded(): Giúp xử lý dữ liệu gửi lên từ các form HTML truyền thống.
@@ -28,15 +28,18 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: "success",
-    message: "Hệ thống Website Đặt đồ ăn trực tuyến (OFOW) đang hoạt động ổn định!" [cite: 119]
+    message: "Hệ thống Website Đặt đồ ăn trực tuyến (OFOW) đang hoạt động ổn định!"
   });
 });
 
-// Nơi đăng ký các cụm API nghiệp vụ chính (Khi nào bạn viết thư mục routes/ thì mở comment ra)
-// app.use('/api/auth', require('./routes/authRoutes'));       // Quản lý Đăng ký/Đăng nhập (BM1) [cite: 126]
-// app.use('/api/stores', require('./routes/storeRoutes'));     // Quản lý Đối tác/Cửa hàng (BM2) [cite: 133]
-// app.use('/api/menus', require('./routes/menuRoutes'));       // Quản lý Thực đơn/Món ăn (BM4) [cite: 144]
-// app.use('/api/orders', require('./routes/orderRoutes'));     // Quản lý Đơn hàng cá nhân/nhóm (BM6) [cite: 148, 155]
+// Đăng ký các cụm API nghiệp vụ chính kết nối tới thư mục routes/
+app.use('/api/auth', require('./routes/authRoutes'));           // Quản lý Đăng ký/Đăng nhập (BM1)
+// app.use('/api/restaurants', require('./routes/restaurantRoutes')); // Quản lý Đối tác/Nhà hàng (BM2, BM4)
+// app.use('/api/orders', require('./routes/orderRoutes'));         // Quản lý Đơn hàng cá nhân/nhóm (BM5, BM6)
+
+// Bạn có thể mở thêm các cụm routes này sau khi tạo file tương ứng:
+// app.use('/api/posts', require('./routes/postRoutes'));         // Mạng xã hội & Tương tác (BM7)
+// app.use('/api/reports', require('./routes/reportRoutes'));     // Thống kê & Báo cáo doanh thu (BM8, BM9)
 
 
 // ==========================================
@@ -48,7 +51,8 @@ app.use((err, req, res, next) => {
   console.error("💥 Lỗi hệ thống phát sinh:", err.stack);
   res.status(500).json({ 
     status: "error",
-    message: "Đã xảy ra lỗi nội bộ từ phía máy chủ!" 
+    message: "Đã xảy ra lỗi nội bộ từ phía máy chủ!",
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined // Chỉ hiện chi tiết lỗi khi dev
   });
 });
 

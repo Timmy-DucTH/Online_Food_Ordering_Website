@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
-const accountLogSchema = new mongoose.Schema({
+const AccountLogSchema = new mongoose.Schema({
   // Tài khoản bị tác động (Khóa/Mở khóa)
   user_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'user',
     required: [true, 'Nhật ký phải gắn với một tài khoản cụ thể']
   },
   
@@ -37,4 +37,4 @@ const accountLogSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('accountLog', accountLogSchema);
+module.exports = mongoose.model('accountLog', AccountLogSchema);

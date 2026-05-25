@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 // Định nghĩa cấu trúc con cho từng Món ăn (Sub-schema)
-const menuItemSchema = new mongoose.Schema({
+const MenuItemSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Tên món ăn không được để trống'],
@@ -35,19 +35,19 @@ const menuItemSchema = new mongoose.Schema({
 });
 
 // Định nghĩa cấu trúc chính cho Thực đơn
-const menuSchema = new mongoose.Schema({
+const MenuSchema = new mongoose.Schema({
   // Mỗi cửa hàng chỉ sở hữu duy nhất 1 thực đơn chính
   store_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'retaurant',
+    ref: 'restaurant',
     required: [true, 'Thực đơn phải thuộc về một cửa hàng'],
     unique: true
   },
   
   // Nhúng mảng chứa danh sách nhiều món ăn vào đây
-  items: [menuItemSchema]
+  items: [MenuItemSchema]
 }, {
   timestamps: true
 });
 
-module.exports = mongoose.model('menu', menuSchema);
+module.exports = mongoose.model('menu', MenuSchema);

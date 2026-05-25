@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 // Định nghĩa khuôn mẫu (Schema) cho Collection 'users'
-const userSchema = new mongoose.Schema({
+const UserSchema = new mongoose.Schema({
   // 1. Số điện thoại (Dùng để shipper hoặc cửa hàng liên lạc)
   phone: {
     type: String,
@@ -62,4 +62,4 @@ const userSchema = new mongoose.Schema({
 });
 
 // Xuất Model 'User' ra để các file Controller gọi vào sử dụng
-module.exports = mongoose.model('User', UserSchema);
+module.exports = mongoose.model('user', UserSchema);

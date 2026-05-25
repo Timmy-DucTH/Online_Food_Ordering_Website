@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 // Định nghĩa cấu trúc Bình luận tương tác dưới bài viết (Embedding)
-const commentSchema = new mongoose.Schema({
+const CommentSchema = new mongoose.Schema({
   user_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'user',
@@ -19,11 +19,11 @@ const commentSchema = new mongoose.Schema({
 });
 
 // Định nghĩa cấu trúc chính cho Bài viết
-const postSchema = new mongoose.Schema({
+const PostSchema = new mongoose.Schema({
   // Người đăng bài viết (Khách hàng hoặc Chủ quán)
   author_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'user',
     required: [true, 'Bài viết phải có người đăng']
   },
   
@@ -50,9 +50,9 @@ const postSchema = new mongoose.Schema({
   }],
   
   // Nhúng mảng danh sách bình luận trực tiếp vào bài viết
-  comments: [commentSchema]
+  Comments: [CommentSchema]
 }, {
   timestamps: true
 });
 
-module.exports = mongoose.model('post', postSchema);
+module.exports = mongoose.model('post', PostSchema);
