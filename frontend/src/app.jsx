@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home'; // Vì App.jsx ở ngoài nên dùng đường dẫn ./pages/Home là chính xác
+import Home from './pages/Home';
 import RegisterLogin from './pages/RegisterLogin';
+import Profile from './pages/Profile'; // 🌟 Kiểm tra kỹ dòng import này
 
 function App() {
   return (
@@ -10,6 +11,9 @@ function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/login" element={<RegisterLogin />} />
         <Route path="/register" element={<RegisterLogin />} />
+        
+        {/* 🌟 BẮT BUỘC PHẢI CÓ DÒNG NÀY ĐỂ KHỚP VỚI ĐƯỜNG DẪN /profile */}
+        <Route path="/profile" element={<Profile />} /> 
       </Routes>
     </BrowserRouter>
   );
