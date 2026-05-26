@@ -6,24 +6,32 @@ const Navbar = ({ cart, updateQuantity, removeFromCart, openPendingModal, isLogg
   const [isHovered, setIsHovered] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  // 🌟 SỬA LẠI HÀM ĐĂNG XUẤT: Quay về hẳn trang gốc '/' để dọn sạch bộ nhớ và reload
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
-    
-    // Ép trình duyệt nhảy hẳn về trang gốc, tránh việc tự chuyển hướng vòng lặp tại /home gây trắng màn hình
     window.location.href = '/'; 
   };
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+  // Style chung cho các mục trong menu thả xuống để đảm bảo tính đồng bộ UI
+  const menuItemStyle = {
+    padding: '10px 15px',
+    color: '#333',
+    fontSize: '14px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s'
+  };
+
   return (
     <div style={{ width: '100%', backgroundColor: '#2b4c7e', boxShadow: '0 1px 1px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 1000 }}>
+      
+      {/* THANH TOP BAR PHỤ */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', padding: '6px 10px', fontSize: '13px', color: '#e0e8f5' }}>
-        <div style={{ display: 'flex', gap: '15px' }}>
-          <span style={{ cursor: 'pointer' }} onClick={openPendingModal}>Trở thành Người bán TasteByte</span>
-        </div>
+        
+        {/* 🌟 ĐÃ XÓA: Mục "Trở thành Người bán TasteByte" ở góc trên bên trái */}
+        <div></div> 
         
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
           <span style={{ cursor: 'pointer' }} onClick={openPendingModal}>🔔 Thông Báo</span>
@@ -48,14 +56,28 @@ const Navbar = ({ cart, updateQuantity, removeFromCart, openPendingModal, isLogg
             >
               <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff', color: '#2b4c7e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>U</div>
               
-              {/* 🌟 ĐÃ SỬA: Ưu tiên lấy Email thật của User từ localStorage nếu có, nếu không có mới hiện mặc định */}
               <span>{localStorage.getItem('userEmail') || 'duyquang536'}</span>
 
               {isUserMenuOpen && (
-                <div style={{ position: 'absolute', top: '100%', right: 0, width: '150px', backgroundColor: 'white', borderRadius: '2px', boxShadow: '0 2px 12px rgba(0,0,0,0.15)', padding: '5px 0', zIndex: 1002, border: '1px solid #e8e8e8' }}>
-                  <div onClick={openPendingModal} style={{ padding: '10px 15px', color: '#333', fontSize: '14px' }}>Tài Khoản Của Tôi</div>
-                  <div onClick={openPendingModal} style={{ padding: '10px 15px', color: '#333', fontSize: '14px' }}>Đơn Mua</div>
-                  <div onClick={handleLogout} style={{ padding: '10px 15px', color: '#ff424e', fontSize: '14px', borderTop: '1px solid #f0f0f0' }}>Đăng Xuất</div>
+                <div style={{ position: 'absolute', top: '100%', right: 0, width: '160px', backgroundColor: 'white', borderRadius: '2px', boxShadow: '0 2px 12px rgba(0,0,0,0.15)', padding: '5px 0', zIndex: 1002, border: '1px solid #e8e8e8', textAlign: 'left' }}>
+                  
+                  <div onClick={openPendingModal} style={menuItemStyle} onMouseOver={(e) => e.target.style.backgroundColor = '#f5f5f5'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
+                    Tài Khoản Của Tôi
+                  </div>
+                  
+                  {/* 🌟 THÊM MỚI: Mục Cửa Hàng nằm dưới Tài khoản của tôi */}
+                  <div onClick={openPendingModal} style={menuItemStyle} onMouseOver={(e) => e.target.style.backgroundColor = '#f5f5f5'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
+                    🏪 Cửa Hàng
+                  </div>
+                  
+                  <div onClick={openPendingModal} style={menuItemStyle} onMouseOver={(e) => e.target.style.backgroundColor = '#f5f5f5'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
+                    Giỏ hàng
+                  </div>
+                  
+                  <div onClick={handleLogout} style={{ ...menuItemStyle, color: '#ff424e', borderTop: '1px solid #f0f0f0' }} onMouseOver={(e) => e.target.style.backgroundColor = '#fff1f1'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
+                    Đăng Xuất
+                  </div>
+
                 </div>
               )}
             </div>
