@@ -1,20 +1,17 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Register from './pages/Register';
-import Login from './pages/Login';
-import Home from './pages/Home'; // Nạp trang Home vừa tạo
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home'; // Vì App.jsx ở ngoài nên dùng đường dẫn ./pages/Home là chính xác
+import RegisterLogin from './pages/RegisterLogin';
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/register" />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        
-        {/* Kích hoạt trang Home thực thụ */}
+        <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
+        <Route path="/login" element={<RegisterLogin />} />
+        <Route path="/register" element={<RegisterLogin />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 
