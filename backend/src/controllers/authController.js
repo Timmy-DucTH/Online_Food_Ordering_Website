@@ -1,6 +1,25 @@
-const User = require('../models/user'); // Đã sửa thành chữ 'user' viết thường theo cấu trúc file mới của bạn
+const User = require('../models/user'); 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
+// =================================================================
+// 💡 HÀM HỖ TRỢ: TỰ ĐỘNG KIỂM TRA ĐIỂM UY TÍN & CẬP NHẬT TRẠNG THÁI (MỤC 3)
+// =================================================================
+// Hàm này giúp tự động chuyển trạng thái sang 'banned' nếu điểm < 30.
+// Sau này ở các file khác (ví dụ: orderController khi khách bùng hàng), chỉ cần gọi hàm này.
+const updateWithCreditScore = async (user, pointsToSubtract) => {
+  user.credit_score -= pointsToSubtract;
+  
+  if (user.credit_score < 30) {
+    user.status = 'banned';
+  } else {
+    user.status = 'active'; // Phục hồi nếu điểm được cộng lại >= 30
+  }
+  
+  await user.save();
+  return user;
+};
+
 
 // =================================================================
 // 1. CHỨC NĂNG ĐĂNG KÝ TÀI KHOẢN (POST /api/auth/register)
@@ -9,15 +28,7 @@ exports.register = async (req, res) => {
   try {
     const { phone, full_name, email, password, role } = req.body;
 
-    // RÀNG BUỘC THEO QĐ 1: Kiểm tra độ dài mật khẩu (Phải từ 8 ký tự trở lên)
-    if (!password || password.length < 8) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Quy định hệ thống: Mật khẩu bắt buộc phải chứa ít nhất 8 ký tự!'
-      });
-    }
-
-    // RÀNG BUỘC THEO QĐ 1: Kiểm tra tên đăng nhập (Email) trùng lặp
+    // RÀNG BUỘC: Kiểm tra tên đăng nhập (Email) trùng lặp
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -30,15 +41,23 @@ exports.register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // XỬ LÝ MỤC 4: BẢO MẬT PHÂN QUYỀN (CHẶN HACK QUYỀN ADMIN/MERCHANT)
+    // Nếu người dùng cố tình truyền role là 'admin' hoặc 'merchant' từ Postman/Frontend, 
+    // hệ thống sẽ tự động ép về quyền mặc định là 'customer' (Khách hàng).
+    let finalRole = 'customer';
+    if (role && role !== 'admin' && role !== 'merchant') {
+      finalRole = role; // Cho phép các role hợp lệ khác nếu có (ví dụ: shipper)
+    }
+
     // KHỞI TẠO ĐỐI TƯỢNG NGƯỜI DÙNG MỚI XUỐNG MONGO DB
     const newUser = new User({
       phone,
       full_name,
       email,
-      password: hashedPassword, // Lưu mật khẩu sau khi băm hóa
-      role: role || 'customer',  // Mặc định phân quyền ban đầu là khách hàng
+      password: hashedPassword,  // Lưu mật khẩu sau khi băm hóa
+      role: finalRole,           // Sử dụng role an toàn đã qua bộ lọc kiểm duyệt
       credit_score: 100,         // Điểm uy tín ban đầu mặc định bằng 100 theo QĐ 3
-      status: 'active'           // Trạng thái hoạt động bình thường
+      status: 'active'           // Trạng thái hoạt động ban đầu
     });
 
     await newUser.save();
@@ -48,7 +67,7 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       status: 'success',
-      message: '🎉 Đăng ký tài khoản hệ thống thành công!',
+      message: '🎉 Đăng ký tài khoản hệ thống thành công với phân quyền an toàn!',
       data: newUser
     });
 
@@ -60,6 +79,7 @@ exports.register = async (req, res) => {
     });
   }
 };
+
 
 // =================================================================
 // 2. CHỨC NĂNG ĐĂNG NHẬP HỆ THỐNG (POST /api/auth/login)
@@ -77,11 +97,17 @@ exports.login = async (req, res) => {
       });
     }
 
-    // KIỂM TRA RÀNG BUỘC QĐ 4: Nếu tài khoản bị khóa do tụt điểm uy tín < 30 thì chặn truy cập
-    if (user.status === 'banned') {
+    // KIỂM TRA RÀNG BUỘC MỤC 3 & QĐ 4: Chặn tuyệt đối nếu tài khoản bị khóa do tụt điểm uy tín < 30
+    if (user.status === 'banned' || user.credit_score < 30) {
+      // Đảm bảo đồng bộ trạng thái trong DB đề phòng có độ trễ dữ liệu
+      if (user.status !== 'banned') {
+        user.status = 'banned';
+        await user.save();
+      }
+      
       return res.status(403).json({
         status: 'fail',
-        message: 'Tài khoản này đã bị khóa do chỉ số uy tín tụt xuống dưới mức quy định (< 30 điểm)!'
+        message: `Tài khoản này đã bị khóa! Lý do: Chỉ số uy tín hiện tại (${user.credit_score} điểm) thấp hơn mức quy định (< 30 điểm).`
       });
     }
 
@@ -119,3 +145,6 @@ exports.login = async (req, res) => {
     });
   }
 };
+
+// Xuất bản thêm hàm kiểm tra điểm ra ngoài để các controller khác (như Order) có thể tái sử dụng dễ dàng
+exports.updateWithCreditScore = updateWithCreditScore;

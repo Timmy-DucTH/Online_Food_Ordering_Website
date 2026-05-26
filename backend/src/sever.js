@@ -14,7 +14,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const PORT = process.env.PORT || 5000;
 
 // Gán thẳng chuỗi kết nối sạch của bạn vào đây làm phương án chạy dự phòng
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://duydq206_db_user:duydq206@cluster0.imdxhvp.mongodb.net/?appName=Cluster0?retryWrites=true&w=majority";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://duydq206_db_user:duydq206@cluster0.imdxhvp.mongodb.net/OFOW_Database?retryWrites=true&w=majority";
 // Thiết lập khóa bí mật JWT cho authController
 process.env.JWT_SECRET = process.env.JWT_SECRET || "OFOW_DO_AN_CONG_NGHE_PHAN_MEM_NHOM_8_2026";
 
