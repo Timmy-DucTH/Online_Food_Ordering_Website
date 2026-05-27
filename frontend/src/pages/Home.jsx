@@ -16,7 +16,7 @@ const Home = () => {
 
   const foodList = [
     { id: 1, name: 'Burger Bò Đặc Biệt', price: 55000, rating: 4.8, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=500' },
-    { id: 2, name: 'Pizza Hải Sản Size L', price: 189000, rating: 4.9, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=500' },
+    { id: 2, name: 'Pizza Hải Seafood Size L', price: 189000, rating: 4.9, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=500' },
     { id: 3, name: 'Mì Ý Sốt Bò Bằm', price: 45000, rating: 4.5, image: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?q=80&w=500' },
     { id: 4, name: 'Trà Sữa Trân Châu', price: 35000, rating: 4.7, image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?q=80&w=500' },
     { id: 5, name: 'Gà Rán Giòn Cay', price: 39000, rating: 4.6, image: 'https://images.unsplash.com/photo-1626645738196-c2a7c8d08f58?q=80&w=500' },
@@ -47,24 +47,32 @@ const Home = () => {
     });
   };
 
-  const updateQuantity = (id, change) => {
+  // 🌟 ĐÃ SỬA: Hàm cập nhật số lượng nhận trực tiếp giá trị số lượng mới (newQty) từ Navbar
+  const updateQuantity = (id, newQty) => {
+    if (newQty < 1) return; // Bảo vệ: Không cho giảm xuống dưới 1 (Muốn xóa hẳn thì ấn icon Thùng rác)
     setCart((prevCart) =>
-      prevCart
-        .map((item) => (item.id === id ? { ...item, quantity: item.quantity + change } : item))
-        .filter((item) => item.quantity > 0)
+      prevCart.map((item) => (item.id === id ? { ...item, quantity: newQty } : item))
     );
   };
 
+  // 🌟 ĐÃ SỬA: Hàm xóa món ăn khỏi giỏ hàng đồng bộ theo ID chuẩn xác
   const removeFromCart = (id) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== id));
   };
 
+  // 🌟 THÊM MỚI: Hàm dọn sạch giỏ hàng phục vụ riêng cho hành động thanh toán thành công
+  const clearCart = () => {
+    setCart([]);
+  };
+
   return (
     <div style={{ backgroundColor: '#f5f5f5', minHeight: '100vh', width: '100%', position: 'relative', margin: 0, padding: 0 }}>
+      {/* 🌟 ĐÃ ĐỒNG BỘ: Truyền đầy đủ các prop chuẩn xuống cho Component Navbar */}
       <Navbar 
         cart={cart} 
         updateQuantity={updateQuantity} 
         removeFromCart={removeFromCart} 
+        clearCart={clearCart} // Đưa thêm hàm xóa sạch giỏ vào đây
         openPendingModal={() => setShowModal(true)} 
         isLoggedIn={isLoggedIn} 
       />
@@ -99,12 +107,9 @@ const Home = () => {
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '4px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
             <div style={{ fontSize: '45px', marginBottom: '10px' }}>⚙️</div>
             <h3 style={{ margin: '0 0 10px 0', color: '#2b4c7e', fontWeight: '600' }}>Thông Báo Hệ Thống</h3>
-            
-            {/* 🌟 ĐÃ ĐỔI: Cập nhật lại nội dung thông báo chuẩn cho các tính năng đang phát triển */}
             <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.5', margin: '0 0 20px 0', fontWeight: '500' }}>
               Hệ thống đang cập nhật, vui lòng chờ!
             </p>
-            
             <button 
               onClick={() => setShowModal(false)}
               style={{ padding: '10px 40px', backgroundColor: '#2b4c7e', color: 'white', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
