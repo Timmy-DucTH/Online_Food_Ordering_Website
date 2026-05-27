@@ -47,32 +47,39 @@ const Home = () => {
     });
   };
 
-  // 🌟 ĐÃ SỬA: Hàm cập nhật số lượng nhận trực tiếp giá trị số lượng mới (newQty) từ Navbar
+  // 🌟 TÍNH NĂNG ĐỒNG BỘ: Đặt hàng trực tiếp không qua giỏ hàng
+  const handleDirectCheckout = (foodItem) => {
+    checkAuthAndExecute(() => {
+      // Đóng gói sản phẩm với số lượng bằng 1 và bắn thẳng sang trang Checkout
+      const directItem = { ...foodItem, quantity: 1 };
+      navigate('/checkout', {
+        state: { selectedItems: [directItem] }
+      });
+    });
+  };
+
   const updateQuantity = (id, newQty) => {
-    if (newQty < 1) return; // Bảo vệ: Không cho giảm xuống dưới 1 (Muốn xóa hẳn thì ấn icon Thùng rác)
+    if (newQty < 1) return; 
     setCart((prevCart) =>
       prevCart.map((item) => (item.id === id ? { ...item, quantity: newQty } : item))
     );
   };
 
-  // 🌟 ĐÃ SỬA: Hàm xóa món ăn khỏi giỏ hàng đồng bộ theo ID chuẩn xác
   const removeFromCart = (id) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== id));
   };
 
-  // 🌟 THÊM MỚI: Hàm dọn sạch giỏ hàng phục vụ riêng cho hành động thanh toán thành công
   const clearCart = () => {
     setCart([]);
   };
 
   return (
     <div style={{ backgroundColor: '#f5f5f5', minHeight: '100vh', width: '100%', position: 'relative', margin: 0, padding: 0 }}>
-      {/* 🌟 ĐÃ ĐỒNG BỘ: Truyền đầy đủ các prop chuẩn xuống cho Component Navbar */}
       <Navbar 
         cart={cart} 
         updateQuantity={updateQuantity} 
         removeFromCart={removeFromCart} 
-        clearCart={clearCart} // Đưa thêm hàm xóa sạch giỏ vào đây
+        clearCart={clearCart} 
         openPendingModal={() => setShowModal(true)} 
         isLoggedIn={isLoggedIn} 
       />
@@ -94,14 +101,15 @@ const Home = () => {
                 key={food.id} 
                 item={food} 
                 addToCart={addToCart} 
-                handleBuyNow={() => checkAuthAndExecute(() => setShowModal(true))} 
+                // 🌟 ĐÃ SỬA: Thay thế hàm mở modal hệ thống bằng hàm chuyển hướng checkout trực tiếp
+                handleBuyNow={() => handleDirectCheckout(food)} 
               />
             ))}
           </div>
         </div>
       </div>
 
-      {/* MODAL THÔNG BÁO TẠM THỜI CỦA HỆ THỐNG */}
+      {/* MODAL THÔNG BÁO TẠM THỜI (Giữ lại cho các tính năng khác cần dùng như Thông Báo/Hỗ Trợ ở Navbar) */}
       {showModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '4px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>

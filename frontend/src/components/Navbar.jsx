@@ -50,8 +50,14 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
 
   const handleCheckoutClick = () => {
     if (selectedCartItems.length === 0) return;
-    setCheckoutTotal(totalSelectedPrice);
-    setShowCheckoutModal(true); // Mở hộp thông báo đặt đơn thành công
+    
+    // Đóng popover giỏ hàng trước khi đi
+    setIsHovered(false); 
+    
+    // 🌟 CHUYỂN TRANG: Chuyển sang /checkout và truyền theo danh sách món đã chọn
+    navigate('/checkout', { 
+      state: { selectedItems: selectedCartItems } 
+    });
   };
 
   const handleConfirmOrder = () => {

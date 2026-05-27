@@ -5,6 +5,7 @@ import RegisterLogin from './pages/RegisterLogin';
 import Profile from './pages/Profile';
 import Restaurant from './pages/Restaurant';
 import RestaurantOnboarding from './pages/RestaurantOnboarding'; // 🎯 Kiểm tra kỹ dòng này nhé!
+import Checkout from './pages/Checkout';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
@@ -30,6 +31,7 @@ function App() {
         
         {/* 🎯 TUYẾN ĐƯỜNG CON ĐÃ ĐƯỢC ĐỒNG BỘ CHUẨN */}
         <Route path="/restaurant/onboarding" element={<RestaurantOnboarding />} /> 
+        <Route path="/checkout" element={<Checkout />} />
       </Routes>
 
       {/* MODAL THÔNG BÁO BẢO TRÌ TOÀN CỤC */}
