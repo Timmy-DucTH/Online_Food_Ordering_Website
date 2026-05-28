@@ -8,21 +8,19 @@ const Home = () => {
   const [cart, setCart] = useState([]);
   const [showModal, setShowModal] = useState(false);
   
-  // Khởi tạo trạng thái đăng nhập an toàn từ localStorage
-  const [isLoggedIn] = useState(() => {
-    const token = localStorage.getItem('token');
-    return token ? true : false;
-  });
+  // Khởi trạng thái đăng nhập bảo mật
+  const [isLoggedIn] = useState(() => !!localStorage.getItem('token'));
 
   const foodList = [
     { id: 1, name: 'Burger Bò Đặc Biệt', price: 55000, rating: 4.8, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=500' },
-    { id: 2, name: 'Pizza Hải Seafood Size L', price: 189000, rating: 4.9, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=500' },
-    { id: 3, name: 'Mì Ý Sốt Bò Bằm', price: 45000, rating: 4.5, image: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?q=80&w=500' },
+    { id: 2, name: 'Pizza Hải Sản Size L', price: 189000, rating: 4.9, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?q=80&w=500' },
+    { id: 3, name: 'Mì Ý Sốt Bò Bằm', price: 45000, rating: 4.5, image: 'https://images.unsplash.com/photo-1473093226795-af9932fe5855?q=80&w=500' },
     { id: 4, name: 'Trà Sữa Trân Châu', price: 35000, rating: 4.7, image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?q=80&w=500' },
     { id: 5, name: 'Gà Rán Giòn Cay', price: 39000, rating: 4.6, image: 'https://images.unsplash.com/photo-1626645738196-c2a7c8d08f58?q=80&w=500' },
     { id: 6, name: 'Salad Rau Củ Quả', price: 29000, rating: 4.2, image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=500' },
   ];
 
+  // Chặn bảo vệ kiểm tra đăng nhập
   const checkAuthAndExecute = (callback) => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -33,6 +31,7 @@ const Home = () => {
     return true;
   };
 
+  // Thêm vào giỏ hàng thông thường
   const addToCart = (foodItem) => {
     checkAuthAndExecute(() => {
       setCart((prevCart) => {
@@ -47,10 +46,9 @@ const Home = () => {
     });
   };
 
-  // 🌟 TÍNH NĂNG ĐỒNG BỘ: Đặt hàng trực tiếp không qua giỏ hàng
+  // Hàm đặt hàng mua ngay trực tiếp, phi thẳng sang Checkout
   const handleDirectCheckout = (foodItem) => {
     checkAuthAndExecute(() => {
-      // Đóng gói sản phẩm với số lượng bằng 1 và bắn thẳng sang trang Checkout
       const directItem = { ...foodItem, quantity: 1 };
       navigate('/checkout', {
         state: { selectedItems: [directItem] }
@@ -74,7 +72,7 @@ const Home = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#f5f5f5', minHeight: '100vh', width: '100%', position: 'relative', margin: 0, padding: 0 }}>
+    <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', width: '100%', position: 'relative', margin: 0, padding: 0, color: '#f8fafc' }}>
       <Navbar 
         cart={cart} 
         updateQuantity={updateQuantity} 
@@ -85,23 +83,23 @@ const Home = () => {
       />
       
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 10px' }}>
-        <div style={{ backgroundColor: '#2b4c7e', color: 'white', padding: '50px 20px', textAlign: 'center', borderRadius: '3px', marginBottom: '25px', backgroundImage: 'linear-gradient(135deg, #2b4c7e 0%, #1a365d 100%)' }}>
-          <h2 style={{ fontSize: '36px', margin: '0 0 10px 0', fontWeight: '700' }}>Bạn muốn ăn gì hôm nay? 😋</h2>
-          <p style={{ fontSize: '16px', opacity: 0.85, margin: 0, fontWeight: '300' }}>Hàng ngàn món ngon đang chờ bạn đặt tại TasteByte</p>
+        {/* BANNER GREEN TECH GRADIENT */}
+        <div style={{ padding: '60px 20px', textAlign: 'center', borderRadius: '12px', marginBottom: '25px', backgroundImage: 'linear-gradient(135deg, #064e3b 0%, #0b0f19 100%)', border: '1px solid #065f46' }}>
+          <h2 style={{ fontSize: '38px', margin: '0 0 10px 0', fontWeight: '800', color: '#ffffff' }}>Bạn muốn ăn gì hôm nay? 😋</h2>
+          <p style={{ fontSize: '16px', color: '#34d399', margin: 0, fontWeight: '400' }}>Hàng ngàn món ngon siêu tốc được mã hóa tại vũ trụ TasteByte</p>
         </div>
 
-        <div style={{ backgroundColor: '#fff', padding: '15px 20px', borderBottom: '1px solid #f2f2f2', borderRadius: '3px 3px 0 0', fontWeight: 'bold', color: '#888', fontSize: '14px', textTransform: 'uppercase' }}>
-          Món ngon gợi ý cho bạn
+        <div style={{ backgroundColor: '#111827', padding: '15px 20px', borderRadius: '8px 8px 0 0', fontWeight: 'bold', color: '#34d399', border: '1px solid #1f2937', borderBottom: 'none', textAlign: 'left' }}>
+          🟢 MÓN NGON GỢI Ý CHO BẠN
         </div>
         
-        <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '0 0 3px 3px', boxShadow: '0 1px 1px rgba(0,0,0,0.02)' }}>
+        <div style={{ backgroundColor: '#111827', padding: '20px', borderRadius: '0 0 8px 8px', border: '1px solid #1f2937', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
             {foodList.map(food => (
               <FoodCard 
                 key={food.id} 
                 item={food} 
                 addToCart={addToCart} 
-                // 🌟 ĐÃ SỬA: Thay thế hàm mở modal hệ thống bằng hàm chuyển hướng checkout trực tiếp
                 handleBuyNow={() => handleDirectCheckout(food)} 
               />
             ))}
@@ -109,18 +107,18 @@ const Home = () => {
         </div>
       </div>
 
-      {/* MODAL THÔNG BÁO TẠM THỜI (Giữ lại cho các tính năng khác cần dùng như Thông Báo/Hỗ Trợ ở Navbar) */}
+      {/* MODAL HỆ THỐNG */}
       {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '4px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+          <div style={{ backgroundColor: '#111827', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 25px rgba(0,0,0,0.5)', textAlign: 'center', maxWidth: '400px', width: '90%', border: '1px solid #1f2937' }}>
             <div style={{ fontSize: '45px', marginBottom: '10px' }}>⚙️</div>
-            <h3 style={{ margin: '0 0 10px 0', color: '#2b4c7e', fontWeight: '600' }}>Thông Báo Hệ Thống</h3>
-            <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.5', margin: '0 0 20px 0', fontWeight: '500' }}>
-              Hệ thống đang cập nhật, vui lòng chờ!
+            <h3 style={{ margin: '0 0 10px 0', color: '#10b981', fontWeight: '700' }}>Thông Báo Hệ Thống</h3>
+            <p style={{ color: '#94a3b8', fontSize: '15px', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+              Tính năng đang liên kết cổng dữ liệu API mã hóa, vui lòng quay lại sau!
             </p>
             <button 
               onClick={() => setShowModal(false)}
-              style={{ padding: '10px 40px', backgroundColor: '#2b4c7e', color: 'white', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
+              style={{ padding: '10px 40px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}
             >
               Xác nhận
             </button>
@@ -128,7 +126,7 @@ const Home = () => {
         </div>
       )}
       
-      <footer style={{ textAlign: 'center', padding: '40px 0', color: '#888', fontSize: '14px', maxWidth: '1200px', margin: '0 auto' }}>
+      <footer style={{ textAlign: 'center', padding: '40px 0', color: '#64748b', fontSize: '14px', maxWidth: '1200px', margin: '0 auto' }}>
         © 2026 TasteByte - Đồ án Công nghệ phần mềm Nhóm 8
       </footer>
     </div>

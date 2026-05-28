@@ -6,8 +6,7 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
   const [isHovered, setIsHovered] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  // 🌟 GIẢI PHÁP TỐI ƯU: Chỉ lưu những ID món ăn bị người dùng bỏ tích chọn
-  // Món mới thêm vào giỏ mặc định không nằm trong đây -> Tự động được tích chọn mà không cần useEffect
+  // Lưu trữ ID những món ăn bị người dùng bỏ tích chọn
   const [unselectedItems, setUnselectedItems] = useState([]);
   
   // Trạng thái hiển thị Custom Modal thanh toán tự chế
@@ -22,7 +21,7 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
 
   // Hàm đảo ngược trạng thái checkbox (Tích chọn / Bỏ tích) của một món ăn
   const handleToggleSelect = (id, e) => {
-    e.stopPropagation(); // Ngăn sự kiện hover/click giỏ hàng bị kích hoạt sai lệch
+    e.stopPropagation(); 
     setUnselectedItems(prev => 
       prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
     );
@@ -31,30 +30,26 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
   // Hàm tích chọn tất cả / bỏ tích chọn tất cả
   const handleToggleSelectAll = (e) => {
     e.stopPropagation();
-    // Nếu tất cả món trong giỏ đều đang được chọn -> Bấm vào sẽ thành Bỏ chọn tất cả
     if (cart.length > 0 && cart.every(item => !unselectedItems.includes(item.id))) {
-      setUnselectedItems(cart.map(item => item.id)); // Cho hết tất cả ID vào danh sách "Bỏ chọn"
+      setUnselectedItems(cart.map(item => item.id)); 
     } else {
-      setUnselectedItems([]); // Xóa sạch danh sách "Bỏ chọn" = Tích chọn lại tất cả
+      setUnselectedItems([]); 
     }
   };
 
-  // 🌟 TÍNH TOÁN TRỰC TIẾP KHI RENDER (Triệt tiêu re-render thừa)
-  // Số lượng hiển thị trên icon Giỏ hàng (Tính tổng toàn bộ giỏ)
+  // Tính toán trực tiếp số lượng hiển thị trên icon Giỏ hàng
   const totalItemsInCart = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Lọc ra danh sách món ĐƯỢC CHỌN (Nằm trong giỏ và KHÔNG nằm trong mảng unselectedItems)
+  // Lọc ra danh sách món ĐƯỢC CHỌN
   const selectedCartItems = cart.filter(item => !unselectedItems.includes(item.id));
   const totalSelectedItems = selectedCartItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalSelectedPrice = selectedCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleCheckoutClick = () => {
     if (selectedCartItems.length === 0) return;
-    
-    // Đóng popover giỏ hàng trước khi đi
     setIsHovered(false); 
     
-    // 🌟 CHUYỂN TRANG: Chuyển sang /checkout và truyền theo danh sách món đã chọn
+    // Điều hướng sang trang /checkout và truyền theo danh sách món đã chọn
     navigate('/checkout', { 
       state: { selectedItems: selectedCartItems } 
     });
@@ -62,61 +57,61 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
 
   const handleConfirmOrder = () => {
     setShowCheckoutModal(false);
-    // Sau khi thanh toán thành công, tiến hành xóa các món đã mua ra khỏi giỏ hàng gốc
     if (clearCart) {
       selectedCartItems.forEach(item => removeFromCart(item.id));
     }
-    setUnselectedItems([]); // Reset mảng trạng thái bỏ chọn về trống
+    setUnselectedItems([]); 
   };
 
+  // Style cho menu thả xuống của User (Đã đồng bộ sang Dark Theme & Xanh lá)
   const menuItemStyle = {
     padding: '10px 15px',
-    color: '#333',
+    color: '#e2e8f0',
     fontSize: '14px',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
+    transition: 'all 0.2s',
     whiteSpace: 'nowrap'
   };
 
   return (
-    <div style={{ width: '100%', backgroundColor: '#2b4c7e', boxShadow: '0 1px 1px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 1000 }}>
+    <div style={{ width: '100%', backgroundColor: '#0b0f19', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)', position: 'sticky', top: 0, zIndex: 1000 }}>
       {/* TOP MINI NAVBAR */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', padding: '6px 10px', fontSize: '13px', color: '#e0e8f5' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', padding: '6px 10px', fontSize: '13px', color: '#94a3b8' }}>
         <div></div> 
         
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
           <span style={{ cursor: 'pointer' }} onClick={openPendingModal}>🔔 Thông Báo</span>
           <span style={{ cursor: 'pointer' }} onClick={openPendingModal}>❓ Hỗ Trợ</span>
           
           {!isLoggedIn ? (
             <div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
-              <span onClick={() => navigate('/login')} style={{ cursor: 'pointer' }}>Đăng Ký / Đăng Nhập</span>
+              <span onClick={() => navigate('/login')} style={{ cursor: 'pointer', color: '#10b981' }}>Đăng Ký / Đăng Nhập</span>
             </div>
           ) : (
             <div 
-              style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 0' }}
+              style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0' }}
               onMouseEnter={() => setIsUserMenuOpen(true)}
               onMouseLeave={() => setIsUserMenuOpen(false)}
             >
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff', color: '#2b4c7e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>U</div>
-              <span>{localStorage.getItem('userEmail') || 'duyquang536'}</span>
+              <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#10b981', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>U</div>
+              <span style={{ color: '#e2e8f0' }}>{localStorage.getItem('userEmail') || 'duyquang536'}</span>
 
-              {/* USER ACCORDION DROP DOWN MENU */}
+              {/* USER DROP DOWN MENU */}
               {isUserMenuOpen && (
-                <div style={{ position: 'absolute', top: '100%', right: 0, width: '160px', backgroundColor: 'white', borderRadius: '2px', boxShadow: '0 2px 12px rgba(0,0,0,0.15)', padding: '5px 0', zIndex: 1002, border: '1px solid #e8e8e8', textAlign: 'left' }}>
-                  <div onClick={() => navigate('/profile')} style={menuItemStyle} onMouseOver={(e) => e.target.style.backgroundColor = '#f5f5f5'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
+                <div style={{ position: 'absolute', top: '100%', right: 0, width: '160px', backgroundColor: '#111827', borderRadius: '6px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', padding: '5px 0', zIndex: 1002, border: '1px solid #1f2937', textAlign: 'left' }}>
+                  <div onClick={() => navigate('/profile')} style={menuItemStyle} onMouseOver={(e) => { e.target.style.backgroundColor = '#1f2937'; e.target.style.color = '#00e676'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#e2e8f0'; }}>
                     Hồ Sơ Cá Nhân
                   </div>
                   
-                  <div onClick={() => navigate('/restaurant')} style={menuItemStyle} onMouseOver={(e) => e.target.style.backgroundColor = '#f5f5f5'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
+                  <div onClick={() => navigate('/restaurant')} style={menuItemStyle} onMouseOver={(e) => { e.target.style.backgroundColor = '#1f2937'; e.target.style.color = '#00e676'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#e2e8f0'; }}>
                     🏪 Cửa Hàng
                   </div>
                   
-                  <div onClick={openPendingModal} style={menuItemStyle} onMouseOver={(e) => e.target.style.backgroundColor = '#f5f5f5'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
+                  <div onClick={openPendingModal} style={menuItemStyle} onMouseOver={(e) => { e.target.style.backgroundColor = '#1f2937'; e.target.style.color = '#00e676'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#e2e8f0'; }}>
                     Đơn Mua
                   </div>
                   
-                  <div onClick={handleLogout} style={{ ...menuItemStyle, color: '#ff424e', borderTop: '1px solid #f0f0f0' }} onMouseOver={(e) => e.target.style.backgroundColor = '#fff1f1'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
+                  <div onClick={handleLogout} style={{ ...menuItemStyle, color: '#ff424e', borderTop: '1px solid #1f2937' }} onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(255, 66, 78, 0.1)'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
                     Đăng Xuất
                   </div>
                 </div>
@@ -127,94 +122,90 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
       </div>
 
       {/* MAIN NAVBAR */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 10px 20px 10px' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 10px 18px 10px' }}>
         {/* LOGO */}
-        <h1 style={{ color: '#fff', margin: 0, cursor: 'pointer', fontSize: '30px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => navigate('/home')}>
-          TasteByte <span style={{ fontSize: '24px' }}>🍔</span>
+        <h1 style={{ color: '#10b981', margin: 0, cursor: 'pointer', fontSize: '30px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => navigate('/home')}>
+          Taste<span style={{ color: '#00e676' }}>Byte</span> <span style={{ fontSize: '26px' }}>🟢</span>
         </h1>
 
         {/* SEARCH BAR */}
-        <div style={{ flex: 1, margin: '0 50px', display: 'flex', backgroundColor: '#ffffff', padding: '4px', borderRadius: '2px', boxShadow: '0 1px 1px rgba(0,0,0,0.05)' }}>
-          <input type="text" placeholder="TasteByte bao ship 0Đ - Đăng ký ngay!" style={{ flex: 1, border: 'none', padding: '10px 15px', fontSize: '14px', outline: 'none', backgroundColor: '#ffffff', color: '#333333' }} />
-          <button onClick={openPendingModal} style={{ backgroundColor: '#2b4c7e', color: 'white', border: 'none', padding: '0 25px', borderRadius: '2px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>🔍</button>
+        <div style={{ flex: 1, margin: '0 50px', display: 'flex', backgroundColor: '#111827', padding: '3px', borderRadius: '6px', border: '1px solid #1f2937' }}>
+          <input type="text" placeholder="TasteByte bao ship 0Đ - Khám phá vũ trụ đồ ăn!" style={{ flex: 1, border: 'none', padding: '10px 15px', fontSize: '14px', outline: 'none', backgroundColor: 'transparent', color: '#ffffff' }} />
+          <button onClick={openPendingModal} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0 25px', borderRadius: '4px', cursor: 'pointer', fontSize: '16px' }}>🔍</button>
         </div>
 
-        {/* CART FLUID DROP DOWN */}
+        {/* CART CONTAINER */}
         <div style={{ position: 'relative', padding: '10px 20px', cursor: 'pointer' }} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
-          <span style={{ fontSize: '28px', color: 'white' }}>🛒</span>
+          <span style={{ fontSize: '28px', color: '#10b981' }}>🛒</span>
           {totalItemsInCart > 0 && (
-            <span style={{ position: 'absolute', top: '4px', right: '10px', backgroundColor: '#ffffff', color: '#2b4c7e', borderRadius: '50%', padding: '2px 7px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #2b4c7e' }}>
+            <span style={{ position: 'absolute', top: '4px', right: '10px', backgroundColor: '#00e676', color: '#0b0f19', borderRadius: '50%', padding: '2px 7px', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 0 10px #00e676' }}>
               {totalItemsInCart}
             </span>
           )}
           
-          {/* POP-OVER BOX GIỎ HÀNG KHI HOVER */}
+          {/* HOVER DROPDOWN BOX GIỎ HÀNG */}
           {isHovered && (
-            <div style={{ position: 'absolute', top: '100%', right: 0, width: '420px', backgroundColor: 'white', padding: '15px', borderRadius: '4px', boxShadow: '0 5px 20px rgba(0,0,0,0.15)', color: '#333', fontSize: '14px', zIndex: 1005 }}>
+            <div style={{ position: 'absolute', top: '100%', right: 0, width: '420px', backgroundColor: '#111827', padding: '15px', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.6)', color: '#ffffff', fontSize: '14px', zIndex: 1005, border: '1px solid #1f2937' }}>
               {cart.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px 0', color: '#888' }}>Chưa có sản phẩm nào</div>
+                <div style={{ textAlign: 'center', padding: '20px 0', color: '#64748b' }}>Chưa có byte dữ liệu đồ ăn nào trong giỏ</div>
               ) : (
                 <div>
-                  {/* THANH CHỌN TẤT CẢ (SELECT ALL) */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#2b4c7e' }}>
+                  {/* SELECT ALL */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #1f2937', paddingBottom: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#00e676' }}>
                       <input 
                         type="checkbox" 
                         checked={cart.length > 0 && cart.every(item => !unselectedItems.includes(item.id))} 
                         onChange={handleToggleSelectAll}
-                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        style={{ accentColor: '#00e676', cursor: 'pointer' }}
                       />
                       Chọn tất cả ({cart.length})
                     </label>
-                    <span style={{ fontSize: '12px', color: '#888' }}>Đã chọn: {selectedCartItems.length}</span>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Đã chọn: {selectedCartItems.length}</span>
                   </div>
 
-                  {/* DANH SÁCH MÓN ĂN TRONG GIỎ */}
-                  <div style={{ maxHeight: '240px', overflowY: 'auto', paddingRight: '5px' }}>
+                  {/* DANH SÁCH MÓN ĂN */}
+                  <div style={{ maxHeight: '240px', overflowY: 'auto', textAlign: 'left' }}>
                     {cart.map((item) => {
                       const isChecked = !unselectedItems.includes(item.id);
                       return (
-                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', borderBottom: '1px solid #fcfcfc', paddingBottom: '8px', backgroundColor: isChecked ? '#fdfeff' : 'transparent' }}>
-                          
-                          {/* CHECKBOX TỪNG MÓN */}
+                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', borderBottom: '1px solid #1f2937', paddingBottom: '8px' }}>
                           <input 
                             type="checkbox" 
                             checked={isChecked}
                             onChange={(e) => handleToggleSelect(item.id, e)}
-                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                            style={{ accentColor: '#00e676', cursor: 'pointer' }}
                           />
 
-                          {/* Tên món */}
-                          <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1, maxWidth: '130px', fontWeight: '500' }}>
+                          <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1, maxWidth: '140px', fontWeight: '500' }}>
                             {item.name}
                           </span>
                           
-                          {/* CỤM NÚT BẤM CỘNG/TRỪ SỐ LƯỢNG */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {/* NÚT TĂNG GIẢM SỐ LƯỢNG */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                             <button 
                               onClick={(e) => { e.stopPropagation(); if (updateQuantity) updateQuantity(item.id, item.quantity - 1); }}
-                              style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #ddd', backgroundColor: '#f9f9f9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}
+                              style={{ width: '22px', height: '22px', backgroundColor: '#1f2937', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold' }}
                             >
                               -
                             </button>
-                            <span style={{ fontSize: '13px', fontWeight: '600', minWidth: '16px', textAlign: 'center' }}>{item.quantity}</span>
+                            <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: '600' }}>{item.quantity}</span>
                             <button 
                               onClick={(e) => { e.stopPropagation(); if (updateQuantity) updateQuantity(item.id, item.quantity + 1); }}
-                              style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #ddd', backgroundColor: '#f9f9f9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}
+                              style={{ width: '22px', height: '22px', backgroundColor: '#1f2937', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold' }}
                             >
                               +
                             </button>
                           </div>
 
-                          {/* Thành giá & Icon Thùng rác */}
+                          {/* THÀNH GIÁ & XÓA */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-                            <span style={{ color: isChecked ? '#ff424e' : '#888', fontWeight: '500', fontSize: '13px', minWidth: '65px', textAlign: 'right' }}>
+                            <span style={{ color: '#00e676', fontWeight: 'bold', fontSize: '13px', minWidth: '70px', textAlign: 'right' }}>
                               {(item.price * item.quantity).toLocaleString()}đ
                             </span>
                             <button 
                               onClick={(e) => { e.stopPropagation(); if (removeFromCart) removeFromCart(item.id); }}
-                              style={{ backgroundColor: 'transparent', border: 'none', color: '#ff424e', fontSize: '15px', cursor: 'pointer', padding: '2px 4px' }}
-                              title="Xóa món ăn"
+                              style={{ backgroundColor: 'transparent', border: 'none', color: '#ff424e', fontSize: '15px', cursor: 'pointer' }}
                             >
                               🗑️
                             </button>
@@ -224,24 +215,25 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
                     })}
                   </div>
 
-                  {/* THÀNH TIỀN THEO CHECKBOX CỦA MÓN ĐƯỢC CHỌN */}
-                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #eee', fontSize: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666', marginBottom: '4px' }}>
+                  {/* THÀNH TIỀN */}
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #1f2937', fontSize: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', marginBottom: '4px' }}>
                       <span>Món đã chọn mua:</span>
                       <span>{totalSelectedItems} món</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px' }}>
-                      <span>Tổng tiền thanh toán:</span>
-                      <span style={{ color: '#ff424e' }}>{totalSelectedPrice.toLocaleString()}đ</span>
+                      <span>Tổng tiền tính toán:</span>
+                      <span style={{ color: '#00e676', textShadow: '0 0 5px rgba(0,230,118,0.3)' }}>{totalSelectedPrice.toLocaleString()}đ</span>
                     </div>
                   </div>
 
+                  {/* BUTTON CHECKOUT */}
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleCheckoutClick(); }}
-                    style={{ width: '100%', backgroundColor: selectedCartItems.length === 0 ? '#ccc' : '#2b4c7e', color: 'white', border: 'none', padding: '10px 0', borderRadius: '3px', marginTop: '12px', cursor: selectedCartItems.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '14px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                    style={{ width: '100%', backgroundColor: selectedCartItems.length === 0 ? '#4b5563' : '#10b981', color: 'white', border: 'none', padding: '12px 0', borderRadius: '6px', marginTop: '12px', cursor: selectedCartItems.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '14px', boxShadow: selectedCartItems.length === 0 ? 'none' : '0 4px 10px rgba(16,185,129,0.3)' }}
                     disabled={selectedCartItems.length === 0}
                   >
-                    💳 Thanh toán món đã chọn ({totalSelectedItems})
+                    💳 Tiến Hành Thanh Toán ({totalSelectedItems})
                   </button>
                 </div>
               )}
@@ -250,35 +242,32 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
         </div>
       </div>
 
-      {/* CUSTOM SUCCESS MODAL - NẰM CHÍNH GIỮA MÀN HÌNH CHỈ HIỆN KHI BẤM THANH TOÁN */}
+      {/* CUSTOM SUCCESS MODAL */}
       {showCheckoutModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 20000 }}>
-          <div style={{ backgroundColor: 'white', padding: '35px', borderRadius: '6px', textAlign: 'center', maxWidth: '420px', width: '90%', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
-            <div style={{ fontSize: '55px', marginBottom: '15px' }}>🎉</div>
-            <h3 style={{ color: '#2b4c7e', fontSize: '22px', margin: '0 0 12px 0', fontWeight: '600' }}>Đặt Đơn Thành Công!</h3>
-            <p style={{ color: '#666', lineHeight: '1.5', marginBottom: '8px', fontSize: '14px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 20000 }}>
+          <div style={{ backgroundColor: '#111827', padding: '35px', borderRadius: '12px', textAlign: 'center', maxWidth: '420px', width: '90%', border: '1px solid #10b981', boxShadow: '0 0 30px rgba(16,185,129,0.2)' }}>
+            <div style={{ fontSize: '55px', marginBottom: '15px' }}>🟢🚀</div>
+            <h3 style={{ color: '#00e676', fontSize: '22px', margin: '0 0 12px 0', fontWeight: '700' }}>Đặt Đơn Thành Công!</h3>
+            <p style={{ color: '#94a3b8', lineHeight: '1.5', marginBottom: '8px', fontSize: '14px' }}>
               Hệ thống TasteByte đã tiếp nhận đơn hàng gồm các món bạn chọn và đang điều phối tài xế giao tới bạn.
             </p>
             
-            {/* Hộp danh sách chi tiết các món vừa mua */}
-            <div style={{ backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '4px', textAlign: 'left', marginBottom: '20px', maxHeight: '100px', overflowY: 'auto', fontSize: '13px' }}>
-              <span style={{ fontWeight: 'bold', color: '#2b4c7e' }}>Chi tiết hóa đơn món mua:</span>
+            <div style={{ backgroundColor: '#0b0f19', padding: '12px', borderRadius: '6px', textAlign: 'left', marginBottom: '20px', maxHeight: '100px', overflowY: 'auto', fontSize: '13px', border: '1px solid #1f2937' }}>
+              <span style={{ fontWeight: 'bold', color: '#10b981' }}>Chi tiết hóa đơn món mua:</span>
               {selectedCartItems.map(i => (
-                <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', color: '#555', marginTop: '2px' }}>
+                <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', color: '#e2e8f0', marginTop: '4px' }}>
                   <span>• {i.name}</span>
                   <span>x{i.quantity}</span>
                 </div>
               ))}
             </div>
 
-            <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#ff424e', marginBottom: '25px', backgroundColor: '#fff5f5', padding: '8px', borderRadius: '4px' }}>
+            <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#00e676', marginBottom: '25px', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
               Tổng thanh toán: {checkoutTotal.toLocaleString()}đ
             </p>
             <button 
               onClick={handleConfirmOrder}
-              style={{ backgroundColor: '#2b4c7e', color: 'white', border: 'none', padding: '12px 0', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px', width: '100%', transition: 'background-color 0.2s' }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#1d3557'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#2b4c7e'}
+              style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '12px 0', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px', width: '100%' }}
             >
               Tuyệt vời (OK)
             </button>
