@@ -68,7 +68,7 @@ const OrderSchema = new mongoose.Schema({
   }],
 
   // Nhúng mảng danh sách món ăn đã định nghĩa ở trên vào đơn hàng
-  items: [orderItemSchema],
+  items: [OrderItemSchema],
 
   // Thông tin giao hàng (BM 5)
   shipping_address: {

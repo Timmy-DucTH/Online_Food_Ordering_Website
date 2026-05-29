@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 
+// IMPORT MIDDLEWARE BẢO MẬT (Xác thực danh tính qua Token JWT)
+// Lưu ý: Tùy theo file authMiddleware.js của bạn export dạng đối tượng { verifyToken } 
+// hay export trực tiếp hàm, bạn hãy kiểm tra lại tên hàm cho chính xác nhé (ví dụ: verifyToken, protect,...)
+const { verifyToken } = require('../middleware/authMiddleware'); 
+
 // ==========================================
 // TRÌNH KIỂM TRA DỮ LIỆU ĐẦU VÀO (MIDDLEWARE)
 // ==========================================
@@ -55,5 +60,9 @@ router.post('/register', validateRegisterInput, authController.register);
 
 // Tuyến đường Đăng nhập
 router.post('/login', authController.login);
+
+// 🌟 TUYẾN ĐƯỜNG MỚI: Đổi mật khẩu tài khoản bảo mật
+// Route này sẽ chặn người dùng chưa đăng nhập nhờ vào verifyToken
+router.post('/change-password', verifyToken, authController.changePassword);
 
 module.exports = router;

@@ -106,11 +106,7 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
                   <div onClick={() => navigate('/restaurant')} style={menuItemStyle} onMouseOver={(e) => { e.target.style.backgroundColor = '#1f2937'; e.target.style.color = '#00e676'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#e2e8f0'; }}>
                     🏪 Cửa Hàng
                   </div>
-                  
-                  <div onClick={openPendingModal} style={menuItemStyle} onMouseOver={(e) => { e.target.style.backgroundColor = '#1f2937'; e.target.style.color = '#00e676'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#e2e8f0'; }}>
-                    Đơn Mua
-                  </div>
-                  
+                
                   <div onClick={handleLogout} style={{ ...menuItemStyle, color: '#ff424e', borderTop: '1px solid #1f2937' }} onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(255, 66, 78, 0.1)'} onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}>
                     Đăng Xuất
                   </div>

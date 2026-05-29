@@ -21,4 +21,8 @@ API.interceptors.request.use((config) => {
 export const registerUser = (userData) => API.post('/auth/register', userData);
 export const loginUser = (credentials) => API.post('/auth/login', credentials);
 
+// 🌟 HÀM MỚI BỔ SUNG: Gọi API Đổi mật khẩu tài khoản
+// Nhận vào object chứa { oldPassword, newPassword }
+export const changePasswordAPI = (passwordData) => API.post('/auth/change-password', passwordData);
+
 export default API;

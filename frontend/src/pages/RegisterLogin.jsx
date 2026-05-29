@@ -45,7 +45,7 @@ const RegisterLogin = () => {
       <header style={{ backgroundColor: '#111827', padding: '20px 0', borderBottom: '1px solid #1f2937', width: '100%' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', padding: '0 20px' }}>
           <h1 style={{ color: '#10b981', margin: 0, cursor: 'pointer', fontSize: '26px', fontWeight: '800', letterSpacing: '-0.5px' }} onClick={() => navigate('/home')}>
-            TasteByte <span style={{ fontSize: '20px' }}>🍔</span>
+            TasteByte <span style={{ fontSize: '20px' }}>🟢</span>
           </h1>
           <span style={{ fontSize: '20px', color: '#1f2937', margin: '0 15px' }}>|</span>
           <span style={{ fontSize: '18px', color: '#ffffff', fontWeight: 'bold' }}>

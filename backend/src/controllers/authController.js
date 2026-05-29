@@ -146,5 +146,61 @@ exports.login = async (req, res) => {
   }
 };
 
-// Xuất bản thêm hàm kiểm tra điểm ra ngoài để các controller khác (như Order) có thể tái sử dụng dễ dàng
+
+// =================================================================
+// 🌟 VỊ TRÍ CHÈN MỚI: 3. CHỨC NĂNG ĐỔI MẬT KHẨU TÀI KHOẢN (POST /api/auth/change-password)
+// =================================================================
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user.id; // Lấy từ authMiddleware sau khi xác thực xong JWT token
+
+    // 1. Tìm thông tin chi tiết người dùng
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(444).json({
+        status: 'fail',
+        message: 'Tài khoản người dùng không tồn tại hoặc đã bị xóa khỏi hệ thống!'
+      });
+    }
+
+    // 2. So sánh đối chiếu mật khẩu cũ xem khớp hay không
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Mật khẩu hiện tại nhập vào không chính xác!'
+      });
+    }
+
+    // 3. Ràng buộc bảo mật: Mật khẩu mới không được giống hệt mật khẩu cũ
+    const isSame = await bcrypt.compare(newPassword, user.password);
+    if (isSame) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Mật khẩu mới không được trùng lặp với mật khẩu đang sử dụng!'
+      });
+    }
+
+    // 4. Tiến hành băm mã hóa mật khẩu mới trước khi lưu xuống DB
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: '🔒 Cập nhật đổi mật khẩu tài khoản bảo mật thành công!'
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Đã xảy ra lỗi hệ thống trong quá trình xử lý đổi mật khẩu!',
+      error: error.message
+    });
+  }
+};
+
+
+// Xuất bản thêm hàm kiểm tra điểm ra ngoài để các controller khác (nhux Order) có thể tái sử dụng dễ dàng
 exports.updateWithCreditScore = updateWithCreditScore;
