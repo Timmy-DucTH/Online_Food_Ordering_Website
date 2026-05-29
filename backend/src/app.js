@@ -36,7 +36,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', require('./routes/authRoutes'));           // Quản lý Đăng ký/Đăng nhập (BM1)
 app.use('/api/admin', require('./routes/adminRoutes'));         // Quản trị Admin Dashboard
 app.use('/api/foods', require('./routes/foodRoutes'));          // API Món ăn công khai
-// app.use('/api/restaurants', require('./routes/restaurantRoutes')); // Quản lý Đối tác/Nhà hàng (BM2, BM4)
+app.use('/api/restaurants', require('./routes/restaurantRoutes')); // Quản lý Đối tác/Nhà hàng (BM2, BM4)
 // app.use('/api/orders', require('./routes/orderRoutes'));         // Quản lý Đơn hàng cá nhân/nhóm (BM5, BM6)
 
 // Bạn có thể mở thêm các cụm routes này sau khi tạo file tương ứng:

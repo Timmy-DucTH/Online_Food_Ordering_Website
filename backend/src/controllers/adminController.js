@@ -64,8 +64,18 @@ exports.getSystemStats = async (req, res) => {
   }
 };
 
-// 5. Lấy danh sách tất cả món ăn
+// 5. Lấy danh sách tất cả món ăn công khai (chỉ lấy món đã duyệt hoặc không ở trạng thái pending)
 exports.getAllFoods = async (req, res) => {
+  try {
+    const foods = await Food.find({ status: { $ne: 'pending' } }).sort({ createdAt: -1 });
+    res.status(200).json({ status: 'success', foods });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// 5b. Lấy danh sách tất cả món ăn cho Admin (bao gồm cả chờ duyệt)
+exports.getAdminFoods = async (req, res) => {
   try {
     const foods = await Food.find().sort({ createdAt: -1 });
     res.status(200).json({ status: 'success', foods });
@@ -74,7 +84,30 @@ exports.getAllFoods = async (req, res) => {
   }
 };
 
-// 6. Thêm món ăn mới
+// 5c. Admin duyệt/từ chối món ăn của merchant
+exports.approveFood = async (req, res) => {
+  try {
+    const { status } = req.body; // 'approved' hoặc 'rejected'
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ status: 'fail', message: 'Trạng thái duyệt không hợp lệ!' });
+    }
+
+    const food = await Food.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!food) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy món ăn!' });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: `Đã cập nhật trạng thái món ăn thành: ${status}`,
+      food
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// 6. Thêm món ăn mới (Dự phòng)
 exports.addFood = async (req, res) => {
   try {
     const food = await Food.create(req.body);

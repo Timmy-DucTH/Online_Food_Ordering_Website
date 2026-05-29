@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import API from '../services/api'; // Đảm bảo đường dẫn import trỏ đúng về cấu hình Axios instance của bạn
+import API from '../services/api'; 
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -12,9 +12,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [foods, setFoods] = useState([]);
   const [orders, setOrders] = useState([]);
-  
-  // State phục vụ form Thêm món ăn mới
-  const [newFood, setNewFood] = useState({ name: '', price: '', category: '', image: '', description: '' });
+  const [restaurants, setRestaurants] = useState([]);
   
   // State quản lý Trạng thái tải và Thông báo lỗi hệ thống
   const [loading, setLoading] = useState(false);
@@ -23,7 +21,6 @@ const AdminDashboard = () => {
 
   // =========================================================================
   // EFFECT 1: TỰ ĐỘNG NẠP DỮ LIỆU THỜI GIAN THỰC MỖI KHI CHUYỂN TAB
-  // (Đã gộp hàm vào trong Effect để chặn lỗi Cascading Renders & Missing Dependency)
   // =========================================================================
   useEffect(() => {
     const fetchTabData = async () => {
@@ -35,12 +32,16 @@ const AdminDashboard = () => {
           setUsers(res.data.users || []);
         }
         if (activeTab === 'foods') {
-          const res = await API.get('/foods'); // API lấy danh sách món ăn dùng chung
+          const res = await API.get('/admin/foods'); // API Admin lấy danh sách món ăn (bao gồm chờ duyệt)
           setFoods(res.data.foods || []);
         }
         if (activeTab === 'overview' || activeTab === 'orders') {
           const res = await API.get('/admin/orders');
           setOrders(res.data.orders || []);
+        }
+        if (activeTab === 'restaurants') {
+          const res = await API.get('/admin/restaurants'); // API Lấy danh sách cửa hàng
+          setRestaurants(res.data.data || []);
         }
       } catch (err) {
         setErrorMsg(err.response?.data?.message || 'Không thể đồng bộ dữ liệu với máy chủ backend!');
@@ -49,7 +50,6 @@ const AdminDashboard = () => {
       }
     };
 
-    // Kích hoạt thực thi hàm ngay lập tức
     fetchTabData();
   }, [activeTab]);
 
@@ -72,7 +72,6 @@ const AdminDashboard = () => {
       const res = await API.put(endpoint);
       if (res.data.status === 'success') {
         setSuccessMsg(res.data.message || 'Cập nhật trạng thái người dùng thành công!');
-        // Cập nhật state cục bộ ngay lập tức để UI render lại thay vì re-fetch
         setUsers(users.map(u => u._id === userId ? { ...u, status: currentStatus === 'banned' ? 'active' : 'banned' } : u));
       }
     } catch (err) {
@@ -81,19 +80,17 @@ const AdminDashboard = () => {
   };
 
   // ==========================================
-  // HÀM NGHIỆP VỤ 2: QUẢN LÝ THỰC ĐƠN MÓN ĂN
+  // HÀM NGHIỆP VỤ 2: QUẢN LÝ THỰC ĐƠN MÓN ĂN (DUYỆT / XÓA)
   // ==========================================
-  const handleAddFoodSubmit = async (e) => {
-    e.preventDefault();
+  const handleApproveFood = async (foodId, status) => {
     try {
-      const res = await API.post('/admin/foods', newFood);
+      const res = await API.put(`/admin/foods/${foodId}/approve`, { status });
       if (res.data.status === 'success') {
-        setSuccessMsg('🍔 Thêm món ăn mới vào thực đơn thành công!');
-        setFoods([res.data.food, ...foods]);
-        setNewFood({ name: '', price: '', category: '', image: '', description: '' }); // Reset form
+        setSuccessMsg(`✓ Đã cập nhật trạng thái món ăn thành: ${status === 'approved' ? 'Phê duyệt' : 'Từ chối'}`);
+        setFoods(foods.map(f => f._id === foodId ? { ...f, status } : f));
       }
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || 'Lỗi khi đẩy món ăn mới lên cơ sở dữ liệu!');
+      alert(err.response?.data?.message || 'Thao tác duyệt món ăn thất bại!');
     }
   };
 
@@ -111,7 +108,22 @@ const AdminDashboard = () => {
   };
 
   // ==========================================
-  // HÀM NGHIỆP VỤ 3: ĐIỀU PHỐI VẬN ĐƠN & PHẠT BÙNG HÀNG
+  // HÀM NGHIỆP VỤ 3: DUYỆT HỒ SƠ ĐĂNG KÝ CỬA HÀNG
+  // ==========================================
+  const handleApproveRestaurant = async (restaurantId, status) => {
+    try {
+      const res = await API.put(`/admin/restaurants/${restaurantId}/approve`, { status });
+      if (res.data.status === 'success') {
+        setSuccessMsg(`✓ Đã cập nhật trạng thái hồ sơ nhà hàng thành: ${status === 'approved' ? 'Duyệt' : 'Từ chối'}`);
+        setRestaurants(restaurants.map(r => r._id === restaurantId ? { ...r, status } : r));
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Duyệt hồ sơ nhà hàng thất bại!');
+    }
+  };
+
+  // ==========================================
+  // HÀM NGHIỆP VỤ 4: ĐIỀU PHỐI VẬN ĐƠN & PHẠT BÙNG HÀNG
   // ==========================================
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -120,9 +132,8 @@ const AdminDashboard = () => {
         setSuccessMsg(`📦 Đơn hàng đã được chuyển trạng thái sang: [${newStatus}]`);
         setOrders(orders.map(o => o._id === orderId ? { ...o, status: newStatus } : o));
         
-        // Nếu phạt bùng hàng (Canceled), hệ thống sẽ tự động trừ uy tín
         if (newStatus === 'cancelled') {
-          setSuccessMsg('⚠️ Đơn hàng bị hủy! Hệ thống tự động trừ -20 điểm uy tín của tài khoản này.');
+          setSuccessMsg('⚠️ Đơn hàng bị hủy! Hệ thống tự động trừ điểm uy tín của tài khoản này.');
         }
       }
     } catch (err) {
@@ -167,6 +178,9 @@ const AdminDashboard = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button onClick={() => setActiveTab('overview')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'overview' ? '#10b981' : 'transparent', color: activeTab === 'overview' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
               📊 Tổng Quan Hệ Thống
+            </button>
+            <button onClick={() => setActiveTab('restaurants')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'restaurants' ? '#10b981' : 'transparent', color: activeTab === 'restaurants' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
+              🏪 Xét Duyệt Cửa Hàng
             </button>
             <button onClick={() => setActiveTab('users')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'users' ? '#10b981' : 'transparent', color: activeTab === 'users' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
               👥 Quản Lý Người Dùng
@@ -245,7 +259,86 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* ================= TAB 2: QUẢN LÝ NGƯỜI DÙNG & ĐIỂM UY TÍN ================= */}
+        {/* ================= TAB 2: XÉT DUYỆT CỬA HÀNG ================= */}
+        {activeTab === 'restaurants' && (
+          <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937' }}>
+            <h3 style={{ margin: '0 0 6px 0', color: '#ffffff', fontWeight: '600' }}>🏪 Xét Duyệt Đăng Ký Cửa Hàng</h3>
+            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>Duyệt hoặc từ chối hồ sơ đăng ký hợp tác làm chủ cửa hàng trên TasteByte.</p>
+            
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#0b0f19' }}>
+                    <th style={tableThStyle}>Tên Cửa Hàng</th>
+                    <th style={tableThStyle}>Chủ Hộ / Email</th>
+                    <th style={tableThStyle}>Địa Chỉ</th>
+                    <th style={tableThStyle}>Giấy Phép KD</th>
+                    <th style={tableThStyle}>Ảnh VSATTP / Đại Diện</th>
+                    <th style={tableThStyle}>Trạng Thái</th>
+                    <th style={tableThStyle}>Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {restaurants.length === 0 ? (
+                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', borderBottom: '1px solid #1f2937' }}>Không tìm thấy hồ sơ đăng ký cửa hàng nào.</td></tr>
+                  ) : (
+                    restaurants.map((rest) => (
+                      <tr key={rest._id}>
+                        <td style={tableTdStyle}><b>{rest.store_name}</b></td>
+                        <td style={tableTdStyle}>
+                          <div><b>{rest.merchant_name}</b></div>
+                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>{rest.owner_id?.email}</div>
+                        </td>
+                        <td style={tableTdStyle}>{rest.address}</td>
+                        <td style={tableTdStyle}>
+                          <a href={rest.license_image} target="_blank" rel="noreferrer">
+                            <img src={rest.license_image || 'https://via.placeholder.com/50'} alt="license" style={{ width: '50px', height: '40px', borderRadius: '4px', objectFit: 'cover', cursor: 'pointer', border: '1px solid #1f2937' }} />
+                          </a>
+                        </td>
+                        <td style={tableTdStyle}>
+                          <a href={rest.hygiene_image} target="_blank" rel="noreferrer">
+                            <img src={rest.hygiene_image || 'https://via.placeholder.com/50'} alt="hygiene" style={{ width: '50px', height: '40px', borderRadius: '4px', objectFit: 'cover', cursor: 'pointer', border: '1px solid #1f2937' }} />
+                          </a>
+                        </td>
+                        <td style={tableTdStyle}>
+                          <span style={{ 
+                            padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold',
+                            backgroundColor: rest.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : rest.status === 'pending' ? 'rgba(217, 119, 6, 0.1)' : 'rgba(225, 29, 72, 0.1)',
+                            color: rest.status === 'approved' ? '#10b981' : rest.status === 'pending' ? '#f59e0b' : '#e11d48'
+                          }}>
+                            {rest.status === 'pending' ? '⌛ Chờ duyệt' : rest.status === 'approved' ? '✓ Đã duyệt' : '✕ Từ chối'}
+                          </span>
+                        </td>
+                        <td style={tableTdStyle}>
+                          {rest.status === 'pending' ? (
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button 
+                                onClick={() => handleApproveRestaurant(rest._id, 'approved')}
+                                style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: '#10b981', color: 'white', transition: 'all 0.2s' }}
+                              >
+                                ✓ Duyệt
+                              </button>
+                              <button 
+                                onClick={() => handleApproveRestaurant(rest._id, 'rejected')}
+                                style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: 'rgba(225, 29, 72, 0.15)', color: '#e11d48', transition: 'all 0.2s' }}
+                              >
+                                ✕ Từ chối
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ color: '#94a3b8', fontSize: '13px' }}>Đã xử lý</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 3: QUẢN LÝ NGƯỜI DÙNG & ĐIỂM UY TÍN ================= */}
         {activeTab === 'users' && (
           <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937' }}>
             <h3 style={{ margin: '0 0 6px 0', color: '#ffffff', fontWeight: '600' }}>👥 Danh sách Thành viên & Điểm uy tín</h3>
@@ -258,6 +351,7 @@ const AdminDashboard = () => {
                     <th style={tableThStyle}>Họ và Tên</th>
                     <th style={tableThStyle}>Email</th>
                     <th style={tableThStyle}>Số Điện Thoại</th>
+                    <th style={tableThStyle}>Quyền (Role)</th>
                     <th style={tableThStyle}>Điểm Uy Tín</th>
                     <th style={tableThStyle}>Trạng Thái</th>
                     <th style={tableThStyle}>Thao Tác Hành Vi</th>
@@ -265,13 +359,18 @@ const AdminDashboard = () => {
                 </thead>
                 <tbody>
                   {users.length === 0 ? (
-                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', borderBottom: '1px solid #1f2937' }}>Không tìm thấy người dùng nào trong cơ sở dữ liệu.</td></tr>
+                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', borderBottom: '1px solid #1f2937' }}>Không tìm thấy người dùng nào trong cơ sở dữ liệu.</td></tr>
                   ) : (
                     users.map((user) => (
                       <tr key={user._id}>
                         <td style={tableTdStyle}><b>{user.full_name}</b></td>
                         <td style={tableTdStyle}>{user.email}</td>
                         <td style={tableTdStyle}>{user.phone}</td>
+                        <td style={tableTdStyle}>
+                          <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '8px', fontWeight: 'bold', backgroundColor: user.role === 'admin' ? 'rgba(239, 68, 68, 0.1)' : user.role === 'merchant' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(148, 163, 184, 0.1)', color: user.role === 'admin' ? '#ef4444' : user.role === 'merchant' ? '#10b981' : '#94a3b8' }}>
+                            {user.role}
+                          </span>
+                        </td>
                         <td style={tableTdStyle}>
                           <span style={{ fontWeight: 'bold', color: user.credit_score < 50 ? '#e11d48' : '#10b981', backgroundColor: user.credit_score < 50 ? 'rgba(225, 29, 72, 0.1)' : 'rgba(16, 185, 129, 0.1)', padding: '4px 10px', borderRadius: '6px' }}>
                             {user.credit_score ?? 100} điểm
@@ -299,33 +398,15 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* ================= TAB 3: QUẢN LÝ MÓN ĂN (THÊM / XÓA) ================= */}
+        {/* ================= TAB 4: QUẢN LÝ MÓN ĂN (PHÊ DUYỆT & GỠ BỎ) ================= */}
         {activeTab === 'foods' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-            {/* Form Thêm Món Ăn Mới */}
-            <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937' }}>
-              <h3 style={{ margin: '0 0 15px 0', color: '#ffffff', fontWeight: '600' }}>➕ Thêm Món Ăn Mới Vào Thực Đơn</h3>
-              <form onSubmit={handleAddFoodSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <input type="text" placeholder="Tên món ăn (Ví dụ: Cơm gà Hải Nam)" value={newFood.name} onChange={(e) => setNewFood({ ...newFood, name: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} required />
-                <input type="number" placeholder="Giá tiền bán (VNĐ)" value={newFood.price} onChange={(e) => setNewFood({ ...newFood, price: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} required />
-                <select value={newFood.category} onChange={(e) => setNewFood({ ...newFood, category: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none', cursor: 'pointer' }} required>
-                  <option value="" style={{ backgroundColor: '#0b0f19' }}>-- Chọn danh mục món ăn --</option>
-                  <option value="Đồ ăn nhanh" style={{ backgroundColor: '#0b0f19' }}>Đồ ăn nhanh</option>
-                  <option value="Món nước" style={{ backgroundColor: '#0b0f19' }}>Món nước</option>
-                  <option value="Cơm văn phòng" style={{ backgroundColor: '#0b0f19' }}>Cơm văn phòng</option>
-                  <option value="Trà sữa & Đồ uống" style={{ backgroundColor: '#0b0f19' }}>Trà sữa & Đồ uống</option>
-                </select>
-                <input type="text" placeholder="URL ảnh minh họa món ăn" value={newFood.image} onChange={(e) => setNewFood({ ...newFood, image: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} required />
-                <input type="text" placeholder="Mô tả ngắn thành phần dinh dưỡng" value={newFood.description} onChange={(e) => setNewFood({ ...newFood, description: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', gridColumn: '1 / span 2', outline: 'none' }} />
-                <button type="submit" style={{ gridColumn: '1 / span 2', padding: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: 'background-color 0.2s' }}>
-                  🚀 Phát Hành Món Ăn Lên Cửa Hàng
-                </button>
-              </form>
-            </div>
-
+            
             {/* Bảng Danh Sách Món Ăn */}
             <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937' }}>
-              <h3 style={{ margin: '0 0 15px 0', color: '#ffffff', fontWeight: '600' }}>🍔 Danh mục thực đơn hiện hành</h3>
+              <h3 style={{ margin: '0 0 15px 0', color: '#ffffff', fontWeight: '600' }}>🍔 Quản lý danh mục thực đơn và Phê duyệt</h3>
+              <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>Admin không được quyền thêm món ăn, chỉ có quyền xóa món ăn hệ thống và xét duyệt món ăn do chủ cửa hàng (merchant) đăng lên.</p>
+              
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -334,12 +415,14 @@ const AdminDashboard = () => {
                       <th style={tableThStyle}>Tên Món Ăn</th>
                       <th style={tableThStyle}>Danh Mục</th>
                       <th style={tableThStyle}>Giá Bán</th>
+                      <th style={tableThStyle}>Cửa Hàng</th>
+                      <th style={tableThStyle}>Trạng Thái</th>
                       <th style={tableThStyle}>Hành Động</th>
                     </tr>
                   </thead>
                   <tbody>
                     {foods.length === 0 ? (
-                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', borderBottom: '1px solid #1f2937' }}>Chưa có món ăn nào trong database. Hãy thêm món đầu tiên!</td></tr>
+                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', borderBottom: '1px solid #1f2937' }}>Chưa có món ăn nào trong database.</td></tr>
                     ) : (
                       foods.map((food) => (
                         <tr key={food._id}>
@@ -347,10 +430,27 @@ const AdminDashboard = () => {
                           <td style={tableTdStyle}><b>{food.name}</b></td>
                           <td style={tableTdStyle}><span style={{ backgroundColor: '#0b0f19', padding: '3px 8px', border: '1px solid #1f2937', borderRadius: '6px', fontSize: '13px', color: '#94a3b8' }}>{food.category}</span></td>
                           <td style={tableTdStyle}><span style={{ color: '#10b981', fontWeight: '600' }}>{Number(food.price).toLocaleString('vi-VN')}đ</span></td>
+                          <td style={tableTdStyle}><span style={{ color: '#e2e8f0', fontSize: '13px' }}>{food.restaurant_name || 'TasteByte (Hệ thống)'}</span></td>
                           <td style={tableTdStyle}>
-                            <button onClick={() => handleDeleteFood(food._id)} style={{ padding: '6px 12px', backgroundColor: 'rgba(225, 29, 72, 0.15)', color: '#e11d48', border: '1px solid rgba(225, 29, 72, 0.2)', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s' }}>
-                              🗑️ Xóa món
-                            </button>
+                            <span style={{ 
+                              padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold',
+                              backgroundColor: food.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : food.status === 'pending' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(225, 29, 72, 0.1)',
+                              color: food.status === 'approved' ? '#10b981' : food.status === 'pending' ? '#f59e0b' : '#e11d48'
+                            }}>
+                              {food.status === 'pending' ? '⌛ Chờ duyệt' : food.status === 'approved' ? '✓ Đã duyệt' : '✕ Từ chối'}
+                            </span>
+                          </td>
+                          <td style={tableTdStyle}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              {food.status === 'pending' && (
+                                <button onClick={() => handleApproveFood(food._id, 'approved')} style={{ padding: '6px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}>
+                                  ✓ Duyệt món
+                                </button>
+                              )}
+                              <button onClick={() => handleDeleteFood(food._id)} style={{ padding: '6px 12px', backgroundColor: 'rgba(225, 29, 72, 0.15)', color: '#e11d48', border: '1px solid rgba(225, 29, 72, 0.2)', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s' }}>
+                                🗑️ Xóa món
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -362,7 +462,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* ================= TAB 4: QUẢN LÝ ĐƠN HÀNG & DUYỆT TRẠNG THÁI ================= */}
+        {/* ================= TAB 5: QUẢN LÝ ĐƠN HÀNG & DUYỆT TRẠNG THÁI ================= */}
         {activeTab === 'orders' && (
           <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937' }}>
             <h3 style={{ margin: '0 0 6px 0', color: '#ffffff', fontWeight: '600' }}>📦 Quản lý dòng vận đơn giao hàng</h3>

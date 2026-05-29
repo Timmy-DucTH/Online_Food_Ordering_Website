@@ -31,10 +31,10 @@ const RegisterLogin = ({ setIsLoggedIn }) => {
       } else {
         const res = await loginUser({ email, password });
         if (res.data.status === 'success') {
-          // Lưu token và phân quyền vào localStorage
           localStorage.setItem('token', res.data.token);
           localStorage.setItem('role', res.data.data.role);
           localStorage.setItem('user', JSON.stringify(res.data.data));
+          localStorage.setItem('userEmail', res.data.data.email);
 
           if (setIsLoggedIn) setIsLoggedIn(true);
 

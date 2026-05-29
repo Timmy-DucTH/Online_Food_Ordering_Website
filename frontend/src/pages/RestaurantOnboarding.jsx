@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import API from '../services/api';
 
 const RestaurantOnboarding = () => {
   const navigate = useNavigate();
@@ -52,18 +53,33 @@ const RestaurantOnboarding = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const submissionData = {
-      ...formData,
-      shopAvatar,
-      businessLicense
-    };
+    try {
+      const submissionData = {
+        store_name: formData.shopName,
+        merchant_name: formData.ownerName,
+        address: formData.shopAddress,
+        license_image: businessLicense || 'https://via.placeholder.com/150',
+        hygiene_image: shopAvatar || 'https://via.placeholder.com/150'
+      };
 
-    localStorage.setItem('restaurantStatus', 'pending');
-    localStorage.setItem('pendingRestaurantData', JSON.stringify(submissionData));
-    setShowSuccessModal(true);
+      const res = await API.post('/restaurants/register', submissionData);
+      if (res.data.status === 'success') {
+        localStorage.setItem('restaurantStatus', 'pending');
+        localStorage.setItem('pendingRestaurantData', JSON.stringify({
+          shopName: formData.shopName,
+          shopAddress: formData.shopAddress,
+          ownerName: formData.ownerName,
+          phone: formData.phone,
+          email: formData.email
+        }));
+        setShowSuccessModal(true);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi gửi hồ sơ đăng ký!');
+    }
   };
 
   const handleConfirmSuccess = () => {
