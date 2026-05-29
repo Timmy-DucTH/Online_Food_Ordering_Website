@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { loginUser, registerUser } from '../services/api'; // Gọi api thật từ file cấu hình axios
 
-const RegisterLogin = () => {
+const RegisterLogin = ({ setIsLoggedIn }) => {
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
 
@@ -9,18 +10,46 @@ const RegisterLogin = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isRegister) {
-      console.log('Đăng ký tài khoản mới:', { email, fullName, phone, password });
-      localStorage.setItem('registeredUser', JSON.stringify({ email, fullName, phone }));
-      alert('Đăng ký thành công! Hệ thống tự động chuyển sang màn hình Đăng nhập.');
-      setIsRegister(false);
-    } else {
-      console.log('Đăng nhập hệ thống:', { email, password });
-      localStorage.setItem('token', 'mock_token_123'); 
-      window.location.href = '/home'; 
+    setErrorMsg('');
+    setSuccessMsg('');
+    
+    try {
+      if (isRegister) {
+        const res = await registerUser({ phone, full_name: fullName, email, password });
+        if (res.data.status === 'success') {
+          alert('🎉 Đăng ký thành công! Hệ thống tự động chuyển sang màn hình Đăng nhập.');
+          setIsRegister(false);
+          // Clean fields
+          setFullName('');
+          setPhone('');
+        }
+      } else {
+        const res = await loginUser({ email, password });
+        if (res.data.status === 'success') {
+          // Lưu token và phân quyền vào localStorage
+          localStorage.setItem('token', res.data.token);
+          localStorage.setItem('role', res.data.data.role);
+          localStorage.setItem('user', JSON.stringify(res.data.data));
+
+          if (setIsLoggedIn) setIsLoggedIn(true);
+
+          alert('👋 Đăng nhập thành công!');
+          
+          // Phân luồng chuyển hướng
+          if (res.data.data.role === 'admin') {
+            window.location.href = '/admin'; // Nhảy sang Admin dashboard
+          } else {
+            window.location.href = '/home'; // Khách hàng bình thường về trang chủ
+          }
+        }
+      }
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || 'Có lỗi xảy ra trong quá trình xử lý!');
     }
   };
 
@@ -62,6 +91,12 @@ const RegisterLogin = () => {
           <h3 style={{ fontSize: '24px', color: '#ffffff', margin: '0 0 30px 0', fontWeight: 'bold', textAlign: 'center' }}>
             {isRegister ? 'TẠO TÀI KHOẢN' : 'ĐĂNG NHẬP'}
           </h3>
+
+          {errorMsg && (
+            <div style={{ padding: '12px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: '6px', marginBottom: '20px', fontSize: '14px', fontWeight: '500', textAlign: 'center' }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
             

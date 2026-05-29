@@ -10,7 +10,8 @@ const User = require('../backend/src/models/user');
 // Dữ liệu mẫu thô
 const mockUsers = [
   { phone: "0901234567", full_name: "Nguyễn Văn Khách", email: "khachhang@gmail.com", role: "customer", credit_score: 100, status: "active" },
-  { phone: "0907654321", full_name: "Trần Thị Chủ Quán", email: "chuquan@gmail.com", role: "merchant", credit_score: 100, status: "active" }
+  { phone: "0907654321", full_name: "Trần Thị Chủ Quán", email: "chuquan@gmail.com", role: "merchant", credit_score: 100, status: "active" },
+  { phone: "0222233333", full_name: "Nhóm 8", email: "admin@gmail.com", role: "admin", credit_score: 100, status: "active"}
 ];
 
 async function seedDatabase() {
