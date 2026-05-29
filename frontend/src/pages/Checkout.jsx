@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { createOrderAPI } from '../services/api';
 
 const Checkout = () => {
   const location = useLocation();
@@ -18,6 +19,7 @@ const Checkout = () => {
 
   const [paymentMethod, setPaymentMethod] = useState('COD'); // Mặc định: Tiền mặt
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // --- TÍNH TOÁN HÓA ĐƠN ---
   const totalMoney = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -29,14 +31,31 @@ const Checkout = () => {
     setShippingInfo(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePlaceOrder = (e) => {
-    e.preventDefault();
+  const handlePlaceOrder = async (e) => {
+    if (e) e.preventDefault();
     if (!shippingInfo.address.trim()) {
       alert('Vui lòng nhập địa chỉ giao hàng để TasteByte gửi shipper đến nhé!');
       return;
     }
-    // Kích hoạt Modal đặt hàng thành công
-    setShowSuccessModal(true);
+    
+    setLoading(true);
+    try {
+      const orderPayload = {
+        shipping_address: shippingInfo.address,
+        payment_method: paymentMethod,
+        items: selectedItems,
+        note: shippingInfo.note
+      };
+      
+      const res = await createOrderAPI(orderPayload);
+      if (res.data.status === 'success') {
+        setShowSuccessModal(true);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi tạo đơn hàng!');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCloseSuccess = () => {
@@ -166,11 +185,12 @@ const Checkout = () => {
 
               <button 
                 onClick={handlePlaceOrder}
-                style={{ width: '100%', backgroundColor: '#10b981', color: 'white', border: 'none', padding: '14px 0', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)', transition: 'background-color 0.2s' }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}
+                disabled={loading}
+                style={{ width: '100%', backgroundColor: loading ? '#4b5563' : '#10b981', color: 'white', border: 'none', padding: '14px 0', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '16px', boxShadow: loading ? 'none' : '0 4px 12px rgba(16,185,129,0.3)', transition: 'background-color 0.2s' }}
+                onMouseOver={(e) => { if (!loading) e.target.style.backgroundColor = '#059669'; }}
+                onMouseOut={(e) => { if (!loading) e.target.style.backgroundColor = '#10b981'; }}
               >
-                🚀 XÁC NHẬN ĐẶT ĐƠN HÀNG
+                {loading ? '⏳ ĐANG KHỞI TẠO ĐƠN HÀNG...' : '🚀 XÁC NHẬN ĐẶT ĐƠN HÀNG'}
               </button>
             </div>
           </div>

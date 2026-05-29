@@ -61,6 +61,9 @@ router.post('/register', validateRegisterInput, authController.register);
 // Tuyến đường Đăng nhập
 router.post('/login', authController.login);
 
+// 🌟 TUYẾN ĐƯỜNG MỚI: Quên mật khẩu
+router.post('/forgot-password', authController.forgotPassword);
+
 // 🌟 TUYẾN ĐƯỜNG MỚI: Đổi mật khẩu tài khoản bảo mật
 // Route này sẽ chặn người dùng chưa đăng nhập nhờ vào verifyToken
 router.post('/change-password', verifyToken, authController.changePassword);

@@ -131,7 +131,10 @@ exports.deleteFood = async (req, res) => {
 // 8. Lấy tất cả đơn hàng (Admin)
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().populate('creator_id', 'email full_name').sort({ createdAt: -1 });
+    const orders = await Order.find()
+      .populate('creator_id', 'email full_name')
+      .populate('store_id', 'store_name')
+      .sort({ createdAt: -1 });
     // Map creator_id thành user_id để phù hợp với frontend
     const mapped = orders.map(o => {
       const obj = o.toObject();

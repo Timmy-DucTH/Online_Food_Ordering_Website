@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/order');
 const User = require('../models/user');
 const Restaurant = require('../models/restaurant');
@@ -7,8 +8,36 @@ exports.createOrder = async (req, res) => {
   try {
     const { restaurant_id, creator_id, order_type, shipping_address, distance_km, items, members } = req.body;
 
+    // Tự động gán creator_id từ token người dùng
+    const finalCreatorId = creator_id || req.user.id;
+
+    // Tự động tìm cửa hàng hoạt động nếu frontend gửi đơn mock không có restaurant_id
+    let finalStoreId = restaurant_id;
+    if (!finalStoreId) {
+      const activeRest = await Restaurant.findOne({ status: 'approved' });
+      if (activeRest) {
+        finalStoreId = activeRest._id;
+      } else {
+        const anyRest = await Restaurant.findOne();
+        if (anyRest) {
+          finalStoreId = anyRest._id;
+        } else {
+          return res.status(400).json({
+            status: 'fail',
+            message: 'Hệ thống chưa có cửa hàng nào hoạt động để nhận đơn!'
+          });
+        }
+      }
+    }
+
+    // Tự động ước lượng khoảng cách ngẫu nhiên từ 2 - 9 km nếu không truyền
+    let finalDistance = distance_km;
+    if (finalDistance === undefined || finalDistance === null || finalDistance === 0) {
+      finalDistance = Math.floor(Math.random() * 8) + 2; // 2 - 9 km
+    }
+
     // RÀNG BUỘC QĐ 6: Khoảng cách không được vượt quá 15km
-    if (distance_km > 15) {
+    if (finalDistance > 15) {
       return res.status(400).json({
         status: 'fail',
         message: 'Hệ thống từ chối đặt hàng: Khoảng cách từ cửa hàng đến bạn vượt quá 15km!'
@@ -23,28 +52,43 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    // Chuẩn hóa danh sách món ăn từ giỏ hàng (map ObjectId hợp lệ)
+    const formattedItems = (items || []).map(item => {
+      let itemId = item.item_id || item.id || item._id;
+      if (!mongoose.Types.ObjectId.isValid(itemId)) {
+        itemId = new mongoose.Types.ObjectId(); // Tự sinh ObjectId hợp lệ cho món ăn mock
+      }
+      return {
+        item_id: itemId,
+        name: item.name,
+        quantity: item.quantity || 1,
+        price: item.price || 0,
+        buyer_id: finalCreatorId
+      };
+    });
+
     // TỰ ĐỘNG TÍNH TOÁN THEO QĐ 7
     // 1. Thành tiền món ăn = tổng (số lượng * đơn giá) của các món
     let subtotal = 0;
-    items.forEach(item => {
+    formattedItems.forEach(item => {
       subtotal += item.quantity * item.price;
     });
 
     // 2. Phí vận chuyển = 5,000đ/km
-    const shipping_fee = distance_km * 5000;
+    const shipping_fee = finalDistance * 5000;
 
     // 3. Tổng tiền đơn hàng = thành tiền món ăn + phí vận chuyển
     const total_price = subtotal + shipping_fee;
 
     // Lưu đơn hàng vào database
     const newOrder = new Order({
-      store_id: restaurant_id,
-      creator_id,
+      store_id: finalStoreId,
+      creator_id: finalCreatorId,
       order_type: order_type || 'single',
       members: order_type === 'group' ? members : [],
-      items,
+      items: formattedItems,
       shipping_address,
-      distance_km,
+      distance_km: finalDistance,
       shipping_fee,
       subtotal,
       total_price,
@@ -103,5 +147,26 @@ exports.updateOrderStatus = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Lấy danh sách đơn hàng đã đặt của tài khoản hiện tại
+exports.getMyOrders = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const orders = await Order.find({ creator_id: userId })
+      .populate('store_id', 'store_name')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      orders
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Lỗi đồng bộ danh sách lịch sử đơn hàng!',
+      error: error.message
+    });
   }
 };

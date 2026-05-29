@@ -19,6 +19,133 @@ const AdminDashboard = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // ==========================================
+  // STATE & UTILS PHỤC VỤ THỐNG KÊ DOANH THU CHUỖI CỬA HÀNG
+  // ==========================================
+  const [statsStartDate, setStatsStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6); // Mặc định 7 ngày trước kể từ hiện tại
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
+  
+  const [statsEndDate, setStatsEndDate] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
+  
+  const [selectedRevenueDate, setSelectedRevenueDate] = useState(null);
+  const [dateError, setDateError] = useState('');
+  const [hoveredBarIndex, setHoveredBarIndex] = useState(null);
+
+  // Reset selectedDate nếu range ngày đổi
+  useEffect(() => {
+    setSelectedRevenueDate(null);
+  }, [statsStartDate, statsEndDate]);
+
+  // Kiểm tra ràng buộc ngày (Date range validation)
+  useEffect(() => {
+    setDateError('');
+    if (!statsStartDate || !statsEndDate) return;
+    
+    const start = new Date(statsStartDate);
+    const end = new Date(statsEndDate);
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+    
+    if (start > end) {
+      setDateError('Ngày bắt đầu phải trước hoặc trùng ngày kết thúc!');
+      return;
+    }
+    
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    if (diffDays > 31) {
+      setDateError('Khoảng cách thống kê không được vượt quá 31 ngày (1 tháng)!');
+    }
+  }, [statsStartDate, statsEndDate]);
+
+  const formatDateKey = (dateObj) => {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const getDaysInRange = () => {
+    const start = new Date(statsStartDate);
+    const end = new Date(statsEndDate);
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+    
+    const arr = [];
+    const dt = new Date(start);
+    while (dt <= end) {
+      arr.push(formatDateKey(dt));
+      dt.setDate(dt.getDate() + 1);
+    }
+    return arr;
+  };
+
+  const daysList = dateError ? [] : getDaysInRange();
+  
+  // Chỉ lấy đơn hàng thành công (completed) để thống kê doanh thu
+  const completedOrdersList = orders.filter(o => o.status === 'completed');
+  
+  const dailyData = daysList.map(dateStr => {
+    const dayOrders = completedOrdersList.filter(o => {
+      const orderDate = new Date(o.createdAt);
+      return formatDateKey(orderDate) === dateStr;
+    });
+    
+    const revenue = dayOrders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+    return {
+      dateStr,
+      displayDate: dateStr.split('-').slice(1).reverse().join('/'), // yyyy-mm-dd -> dd/mm
+      revenue,
+      ordersCount: dayOrders.length
+    };
+  });
+  
+  const maxRevenue = Math.max(...dailyData.map(d => d.revenue), 0);
+  
+  const getStoreBreakdownForSelectedDate = () => {
+    if (!selectedRevenueDate) return [];
+    
+    const dayOrders = completedOrdersList.filter(o => {
+      const orderDate = new Date(o.createdAt);
+      return formatDateKey(orderDate) === selectedRevenueDate;
+    });
+    
+    const storesMap = {};
+    dayOrders.forEach(o => {
+      const storeId = o.store_id?._id || 'unknown';
+      const storeName = o.store_id?.store_name || 'TasteByte (Hệ thống)';
+      const price = o.total_price || 0;
+      
+      if (!storesMap[storeId]) {
+        storesMap[storeId] = {
+          storeName,
+          revenue: 0,
+          ordersCount: 0
+        };
+      }
+      storesMap[storeId].revenue += price;
+      storesMap[storeId].ordersCount += 1;
+    });
+    
+    return Object.values(storesMap).sort((a, b) => b.revenue - a.revenue);
+  };
+  
+  const storeBreakdown = getStoreBreakdownForSelectedDate();
+
   // =========================================================================
   // EFFECT 1: TỰ ĐỘNG NẠP DỮ LIỆU THỜI GIAN THỰC MỖI KHI CHUYỂN TAB
   // =========================================================================
@@ -231,7 +358,7 @@ const AdminDashboard = () => {
               <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937' }}>
                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#94a3b8' }}>💰 DOANH THU THỰC TẾ (CHƯA TÍNH HUỶ)</span>
                 <h2 style={{ fontSize: '28px', color: '#10b981', margin: '10px 0 0 0', fontWeight: '800' }}>
-                  {orders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.totalPrice || 0), 0).toLocaleString('vi-VN')}đ
+                  {orders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.total_price || 0), 0).toLocaleString('vi-VN')}đ
                 </h2>
               </div>
               <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937' }}>
@@ -247,6 +374,217 @@ const AdminDashboard = () => {
                 <h2 style={{ fontSize: '28px', color: '#e11d48', margin: '10px 0 0 0', fontWeight: '800' }}>{bannedUsersCount} tài khoản</h2>
               </div>
             </div>
+
+            {/* 📈 THỐNG KÊ DOANH THU & BIỂU ĐỒ SVG CHUYÊN NGHIỆP */}
+            <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937', marginBottom: '30px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', color: '#ffffff', fontWeight: '700', fontSize: '18px' }}>📈 Phân Tích Doanh Thu Hệ Thống</h3>
+                  <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>Thống kê doanh thu theo ngày từ các cửa hàng. Chọn cột để xem chi tiết cửa hàng.</p>
+                </div>
+                
+                {/* Bộ lọc khoảng thời gian */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>Từ:</span>
+                    <input 
+                      type="date" 
+                      value={statsStartDate}
+                      onChange={(e) => setStatsStartDate(e.target.value)}
+                      style={{ padding: '8px 12px', backgroundColor: '#0b0f19', color: '#ffffff', border: '1px solid #1f2937', borderRadius: '6px', fontSize: '13px', outline: 'none' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>Đến:</span>
+                    <input 
+                      type="date" 
+                      value={statsEndDate}
+                      onChange={(e) => setStatsEndDate(e.target.value)}
+                      style={{ padding: '8px 12px', backgroundColor: '#0b0f19', color: '#ffffff', border: '1px solid #1f2937', borderRadius: '6px', fontSize: '13px', outline: 'none' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Banner hiển thị lỗi khoảng thời gian */}
+              {dateError ? (
+                <div style={{ padding: '15px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '8px', fontSize: '14px', fontWeight: '600', textAlign: 'center', margin: '20px 0' }}>
+                  ⚠️ {dateError}
+                </div>
+              ) : (
+                <div style={{ position: 'relative', width: '100%', overflowX: 'auto', padding: '10px 0' }}>
+                  {/* Biểu đồ SVG */}
+                  <svg viewBox="0 0 750 250" width="100%" height="250" style={{ display: 'block', minWidth: '600px' }}>
+                    {/* Gridlines ngang */}
+                    <line x1="60" y1="40" x2="730" y2="40" stroke="#1f2937" strokeDasharray="4 4" />
+                    <line x1="60" y1="90" x2="730" y2="90" stroke="#1f2937" strokeDasharray="4 4" />
+                    <line x1="60" y1="140" x2="730" y2="140" stroke="#1f2937" strokeDasharray="4 4" />
+                    <line x1="60" y1="190" x2="730" y2="190" stroke="#1f2937" strokeDasharray="4 4" />
+                    <line x1="60" y1="210" x2="730" y2="210" stroke="#374151" strokeWidth="2" /> {/* Trục X */}
+
+                    {/* Nhãn trục Y */}
+                    <text x="50" y="44" fill="#94a3b8" fontSize="10" textAnchor="end">{maxRevenue.toLocaleString('vi-VN')}đ</text>
+                    <text x="50" y="144" fill="#94a3b8" fontSize="10" textAnchor="end">{(maxRevenue / 2).toLocaleString('vi-VN')}đ</text>
+                    <text x="50" y="214" fill="#94a3b8" fontSize="10" textAnchor="end">0đ</text>
+
+                    {/* Render các cột doanh thu */}
+                    {dailyData.map((d, i) => {
+                      const svgWidth = 750;
+                      const svgHeight = 250;
+                      const paddingLeft = 60;
+                      const paddingRight = 20;
+                      const paddingBottom = 40;
+                      const chartWidth = svgWidth - paddingLeft - paddingRight;
+                      
+                      const barSpacing = dailyData.length > 0 ? (chartWidth / dailyData.length) : 30;
+                      const barWidth = Math.max(12, barSpacing * 0.65);
+                      
+                      const ratio = maxRevenue > 0 ? (d.revenue / maxRevenue) : 0;
+                      const barHeight = ratio * 160; // Chiều cao tối đa 160px
+                      
+                      const x = paddingLeft + i * barSpacing + (barSpacing - barWidth) / 2;
+                      const y = svgHeight - paddingBottom - barHeight;
+                      
+                      const isHovered = hoveredBarIndex === i;
+                      const isSelected = selectedRevenueDate === d.dateStr;
+                      
+                      return (
+                        <g key={d.dateStr}>
+                          {/* Cột chính */}
+                          <rect
+                            x={x}
+                            y={y}
+                            width={barWidth}
+                            height={barHeight > 0 ? barHeight : 2} // Đảm bảo luôn hiện vạch nhỏ nếu doanh thu = 0
+                            rx="4"
+                            ry="4"
+                            fill={isSelected ? '#f59e0b' : isHovered ? '#34d399' : '#10b981'}
+                            style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                            onClick={() => setSelectedRevenueDate(d.dateStr)}
+                            onMouseOver={() => setHoveredBarIndex(i)}
+                            onMouseOut={() => setHoveredBarIndex(null)}
+                          />
+
+                          {/* Nhãn Ngày (dd/mm) bên dưới trục X */}
+                          <text
+                            x={x + barWidth / 2}
+                            y={svgHeight - paddingBottom + 18}
+                            fill={isSelected ? '#f59e0b' : '#94a3b8'}
+                            fontSize="10"
+                            fontWeight={isSelected ? 'bold' : 'normal'}
+                            textAnchor="middle"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => setSelectedRevenueDate(d.dateStr)}
+                          >
+                            {d.displayDate}
+                          </text>
+
+                          {/* Tooltip khi Hover */}
+                          {isHovered && (
+                            <g>
+                              {/* Background của Tooltip */}
+                              <rect
+                                x={x + barWidth / 2 - 60}
+                                y={Math.max(5, y - 35)}
+                                width="120"
+                                height="26"
+                                rx="4"
+                                fill="#1f2937"
+                                stroke="#10b981"
+                                strokeWidth="1"
+                              />
+                              <text
+                                x={x + barWidth / 2}
+                                y={Math.max(22, y - 18)}
+                                fill="#ffffff"
+                                fontSize="10"
+                                fontWeight="bold"
+                                textAnchor="middle"
+                              >
+                                {d.revenue.toLocaleString('vi-VN')}đ
+                              </text>
+                            </g>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            {/* 🏪 CHI TIẾT DOANH THU TỪNG CỬA HÀNG TRONG NGÀY ĐƯỢC CHỌN */}
+            {selectedRevenueDate && !dateError && (
+              <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937', marginBottom: '30px', animation: 'fadeIn 0.3s ease-out' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <div>
+                    <h4 style={{ margin: 0, color: '#f59e0b', fontWeight: '700', fontSize: '16px' }}>
+                      🏪 Chi Tiết Doanh Thu Cửa Hàng Ngày {selectedRevenueDate.split('-').reverse().join('/')}
+                    </h4>
+                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0 0' }}>Danh sách các cửa hàng có phát sinh đơn hàng thành công, sắp xếp theo doanh thu giảm dần.</p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedRevenueDate(null)}
+                    style={{ padding: '6px 12px', backgroundColor: '#1f2937', color: '#94a3b8', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+                    onMouseOver={(e) => e.target.style.color = '#ffffff'}
+                    onMouseOut={(e) => e.target.style.color = '#94a3b8'}
+                  >
+                    Đóng Bảng ✕
+                  </button>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#0b0f19' }}>
+                        <th style={tableThStyle}>Hạng</th>
+                        <th style={tableThStyle}>Tên Cửa Hàng</th>
+                        <th style={tableThStyle} style={{ textAlign: 'center' }}>Số Đơn Thành Công</th>
+                        <th style={tableThStyle} style={{ textAlign: 'right' }}>Doanh Thu Trong Ngày</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {storeBreakdown.length === 0 ? (
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', borderBottom: '1px solid #1f2937' }}>
+                            Không ghi nhận bất kỳ đơn hàng thành công nào trong ngày này.
+                          </td>
+                        </tr>
+                      ) : (
+                        storeBreakdown.map((store, idx) => (
+                          <tr key={idx} style={{ backgroundColor: idx === 0 ? 'rgba(245, 158, 11, 0.03)' : 'transparent' }}>
+                            <td style={tableTdStyle}>
+                              {idx === 0 ? (
+                                <span style={{ backgroundColor: '#f59e0b', color: '#ffffff', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                                  🏆 TOP 1
+                                </span>
+                              ) : (
+                                <span style={{ color: '#94a3b8', fontWeight: 'bold', paddingLeft: '8px' }}>
+                                  #{idx + 1}
+                                </span>
+                              )}
+                            </td>
+                            <td style={tableTdStyle}>
+                              <span style={{ fontWeight: 'bold', color: idx === 0 ? '#f59e0b' : '#ffffff' }}>
+                                {store.storeName}
+                              </span>
+                            </td>
+                            <td style={tableTdStyle} style={{ textAlign: 'center' }}>
+                              <span style={{ backgroundColor: '#1f2937', padding: '3px 8px', borderRadius: '6px', fontSize: '13px' }}>
+                                {store.ordersCount} đơn
+                              </span>
+                            </td>
+                            <td style={tableTdStyle} style={{ textAlign: 'right', fontWeight: 'bold', color: '#10b981' }}>
+                              {store.revenue.toLocaleString('vi-VN')}đ
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937' }}>
               <h3 style={{ margin: '0 0 15px 0', color: '#ffffff', fontWeight: '600' }}>📈 Quy chế giám sát Middleware</h3>
@@ -488,7 +826,7 @@ const AdminDashboard = () => {
                       <tr key={order._id}>
                         <td style={tableTdStyle}><code style={{ color: '#ffffff', fontWeight: 'bold' }}>#{order._id?.substring(18)}</code></td>
                         <td style={tableTdStyle}>{order.user_id?.email || 'Ẩn danh'}</td>
-                        <td style={tableTdStyle}><span style={{ color: '#10b981', fontWeight: '700' }}>{order.totalPrice?.toLocaleString('vi-VN')}đ</span></td>
+                        <td style={tableTdStyle}><span style={{ color: '#10b981', fontWeight: '700' }}>{order.total_price?.toLocaleString('vi-VN')}đ</span></td>
                         <td style={tableTdStyle}><span style={{ fontSize: '13px', color: '#94a3b8' }}>{order.address || 'Tại quầy cửa hàng'}</span></td>
                         <td style={tableTdStyle}>
                           <span style={{ 

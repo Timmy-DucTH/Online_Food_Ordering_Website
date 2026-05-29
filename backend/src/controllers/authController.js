@@ -201,6 +201,54 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+// 4. CHỨC NĂNG QUÊN MẬT KHẨU (Gửi pass tạm về terminal)
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Vui lòng cung cấp email của tài khoản!'
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Email này chưa được đăng ký trên hệ thống!'
+      });
+    }
+
+    // Sinh mật khẩu tạm ngẫu nhiên 8 ký tự
+    const tempPassword = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+    // Mã hóa mật khẩu tạm
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(tempPassword, salt);
+
+    // Cập nhật vào DB
+    user.password = hashedPassword;
+    await user.save();
+
+    // In ra màn hình console terminal
+    console.log('\n==================================================');
+    console.log(`📬 [SYSTEM EMAIL SIMULATOR] Gửi tới: ${email}`);
+    console.log(`🔑 Mật khẩu tạm thời mới của bạn là: ${tempPassword}`);
+    console.log('==================================================\n');
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Mật khẩu mới đã được cấp và gửi đến Email của bạn (Vui lòng kiểm tra Terminal của Backend).'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Đã xảy ra lỗi hệ thống trong quá trình xử lý quên mật khẩu!',
+      error: error.message
+    });
+  }
+};
 
 // Xuất bản thêm hàm kiểm tra điểm ra ngoài để các controller khác (nhux Order) có thể tái sử dụng dễ dàng
 exports.updateWithCreditScore = updateWithCreditScore;
