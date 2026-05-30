@@ -100,7 +100,11 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
               {isUserMenuOpen && (
                 <div style={{ position: 'absolute', top: '100%', right: 0, width: '160px', backgroundColor: '#111827', borderRadius: '6px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', padding: '5px 0', zIndex: 1002, border: '1px solid #1f2937', textAlign: 'left' }}>
                   <div onClick={() => navigate('/profile')} style={menuItemStyle} onMouseOver={(e) => { e.target.style.backgroundColor = '#1f2937'; e.target.style.color = '#00e676'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#e2e8f0'; }}>
-                    Hồ Sơ Cá Nhân
+                    👤 Hồ Sơ Cá Nhân
+                  </div>
+
+                  <div onClick={() => navigate('/profile', { state: { tab: 'orders' } })} style={menuItemStyle} onMouseOver={(e) => { e.target.style.backgroundColor = '#1f2937'; e.target.style.color = '#00e676'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#e2e8f0'; }}>
+                    🛒 Đơn Hàng Của Tôi
                   </div>
                   
                   <div onClick={() => navigate('/restaurant')} style={menuItemStyle} onMouseOver={(e) => { e.target.style.backgroundColor = '#1f2937'; e.target.style.color = '#00e676'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#e2e8f0'; }}>
