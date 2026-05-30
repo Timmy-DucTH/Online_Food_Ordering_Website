@@ -11,6 +11,7 @@ router.post('/register', verifyToken, restCtrl.registerRestaurant);
 router.get('/my-restaurant', verifyToken, restCtrl.getMyRestaurant);
 router.post('/foods', verifyToken, restCtrl.addMerchantFood);
 router.get('/my-foods', verifyToken, restCtrl.getMyFoods);
+router.get('/my-orders', verifyToken, restCtrl.getMyOrders);
 
 // Legacy/Internal routes
 router.patch('/:restaurantId/approve', restCtrl.approveRestaurant);

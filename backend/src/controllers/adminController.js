@@ -67,7 +67,9 @@ exports.getSystemStats = async (req, res) => {
 // 5. Lấy danh sách tất cả món ăn công khai (chỉ lấy món đã duyệt hoặc không ở trạng thái pending)
 exports.getAllFoods = async (req, res) => {
   try {
-    const foods = await Food.find({ status: { $ne: 'pending' } }).sort({ createdAt: -1 });
+    const foods = await Food.find({ status: { $ne: 'pending' } })
+      .populate('restaurant_id')
+      .sort({ createdAt: -1 });
     res.status(200).json({ status: 'success', foods });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });

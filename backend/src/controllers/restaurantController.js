@@ -217,3 +217,30 @@ exports.toggleItemAvailability = async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
+// Merchant lấy danh sách đơn đặt hàng tại cửa hàng của họ
+exports.getMyOrders = async (req, res) => {
+  try {
+    const owner_id = req.user.id;
+    const restaurant = await Restaurant.findOne({ owner_id });
+    if (!restaurant) {
+      return res.status(200).json({ status: 'success', orders: [] });
+    }
+
+    const Order = require('../models/order');
+    const orders = await Order.find({ store_id: restaurant._id })
+      .populate('creator_id', 'email full_name phone')
+      .sort({ createdAt: -1 });
+
+    // Map creator_id thành user_id để khớp hoàn toàn cấu trúc frontend mong đợi
+    const mapped = orders.map(o => {
+      const obj = o.toObject();
+      obj.user_id = obj.creator_id;
+      return obj;
+    });
+
+    res.status(200).json({ status: 'success', orders: mapped });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
