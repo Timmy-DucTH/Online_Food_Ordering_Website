@@ -70,7 +70,8 @@ exports.getRestaurants = async (req, res) => {
 // Admin duyệt hồ sơ đăng ký Cửa hàng (BM2, QĐ2)
 exports.approveRestaurant = async (req, res) => {
   try {
-    const { restaurantId } = req.params;
+    // Hỗ trợ cả 2 tên param: :id (admin route) và :restaurantId (legacy route)
+    const restaurantId = req.params.id || req.params.restaurantId;
     const { status } = req.body; // 'approved' hoặc 'rejected'
 
     if (!['approved', 'rejected'].includes(status)) {

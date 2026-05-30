@@ -316,16 +316,28 @@ const RegisterLogin = ({ setIsLoggedIn }) => {
                   </>
                 )}
 
-                <input 
-                  type="password" 
-                  placeholder="Mật khẩu bảo mật" 
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={inputStyle} 
-                  onFocus={(e) => e.target.style.borderColor = '#10b981'}
-                  onBlur={(e) => e.target.style.borderColor = '#1f2937'}
-                />
+                <div style={{ width: '100%' }}>
+                  <input 
+                    type="password" 
+                    placeholder={isRegister ? "Mật khẩu bảo mật (tối thiểu 8 ký tự)" : "Mật khẩu bảo mật"}
+                    required
+                    minLength={isRegister ? 8 : undefined}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={inputStyle} 
+                    onFocus={(e) => e.target.style.borderColor = '#10b981'}
+                    onBlur={(e) => e.target.style.borderColor = '#1f2937'}
+                  />
+                  {isRegister && (
+                    <p style={{ margin: '6px 0 0 2px', fontSize: '12px', color: password.length > 0 && password.length < 8 ? '#ef4444' : '#6b7280', fontWeight: '500', transition: 'color 0.2s' }}>
+                      {password.length > 0 && password.length < 8
+                        ? `⚠️ Cần thêm ${8 - password.length} ký tự nữa (tối thiểu 8 ký tự)`
+                        : password.length >= 8
+                        ? '✅ Độ dài mật khẩu hợp lệ'
+                        : '🔒 Mật khẩu phải có ít nhất 8 ký tự'}
+                    </p>
+                  )}
+                </div>
 
                 {/* Phần quên mật khẩu nằm dưới ô nhập mật khẩu và trên nút đăng nhập */}
                 {!isRegister && (

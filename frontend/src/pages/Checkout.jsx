@@ -21,6 +21,17 @@ const Checkout = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // ==========================================
+  // STATE QUẢN LÝ MODAL THÔNG BÁO LỖI GIỮA MÀN HÌNH
+  // ==========================================
+  const [showErrModal, setShowErrModal] = useState(false);
+  const [errModalMsg, setErrModalMsg] = useState('');
+
+  const showError = (msg) => {
+    setErrModalMsg(msg);
+    setShowErrModal(true);
+  };
+
   // --- TÍNH TOÁN HÓA ĐƠN ---
   const totalMoney = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shippingFee = totalMoney > 0 ? 15000 : 0; // Phí ship cố định 15k
@@ -34,7 +45,7 @@ const Checkout = () => {
   const handlePlaceOrder = async (e) => {
     if (e) e.preventDefault();
     if (!shippingInfo.address.trim()) {
-      alert('Vui lòng nhập địa chỉ giao hàng để TasteByte gửi shipper đến nhé!');
+      showError('Vui lòng nhập địa chỉ giao hàng để TasteByte gửi shipper đến nhé! 📍');
       return;
     }
     
@@ -52,7 +63,7 @@ const Checkout = () => {
         setShowSuccessModal(true);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi tạo đơn hàng!');
+      showError(err.response?.data?.message || 'Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại!');
     } finally {
       setLoading(false);
     }
@@ -198,6 +209,27 @@ const Checkout = () => {
         </div>
       </div>
 
+      {/* ❌ MODAL THÔNG BÁO LỖI GIỮA TRANG */}
+      {showErrModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#111827', width: '420px', padding: '32px', borderRadius: '16px', border: '1px solid #ef444440', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)', boxSizing: 'border-box', animation: 'modalFadeIn 0.3s ease-out' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚠️</div>
+            <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#ef4444', fontWeight: '800' }}>Thông Báo</h4>
+            <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.7', margin: '0 0 24px 0', fontWeight: '500' }}>
+              {errModalMsg}
+            </p>
+            <button
+              onClick={() => setShowErrModal(false)}
+              style={{ padding: '10px 32px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' }}
+              onMouseOver={(e) => e.target.style.opacity = '0.85'}
+              onMouseOut={(e) => e.target.style.opacity = '1'}
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 🎉 CUSTOM SUCCESS MODAL - ĐẶT HÀNG THÀNH CÔNG */}
       {showSuccessModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
@@ -221,6 +253,13 @@ const Checkout = () => {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes modalFadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 };

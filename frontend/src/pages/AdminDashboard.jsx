@@ -20,6 +20,26 @@ const AdminDashboard = () => {
   const [successMsg, setSuccessMsg] = useState('');
 
   // ==========================================
+  // STATE QUẢN LÝ MODAL THÔNG BÁO LỖI VÀ XÁC NHẬN GIỮA MÀN HÌNH
+  // ==========================================
+  const [showErrModal, setShowErrModal] = useState(false);
+  const [errModalMsg, setErrModalMsg] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMsg, setConfirmMsg] = useState('');
+  const [confirmCallback, setConfirmCallback] = useState(null);
+
+  const showAdminError = (msg) => {
+    setErrModalMsg(msg);
+    setShowErrModal(true);
+  };
+
+  const showAdminConfirm = (msg, onConfirm) => {
+    setConfirmMsg(msg);
+    setConfirmCallback(() => onConfirm);
+    setShowConfirmModal(true);
+  };
+
+  // ==========================================
   // STATE & UTILS PHỤC VỤ THỐNG KÊ DOANH THU CHUỖI CỬA HÀNG
   // ==========================================
   const [statsStartDate, setStatsStartDate] = useState(() => {
@@ -202,7 +222,7 @@ const AdminDashboard = () => {
         setUsers(users.map(u => u._id === userId ? { ...u, status: currentStatus === 'banned' ? 'active' : 'banned' } : u));
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Lỗi thao tác phân quyền tài khoản!');
+      showAdminError(err.response?.data?.message || 'Lỗi thao tác phân quyền tài khoản!');
     }
   };
 
@@ -217,21 +237,25 @@ const AdminDashboard = () => {
         setFoods(foods.map(f => f._id === foodId ? { ...f, status } : f));
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Thao tác duyệt món ăn thất bại!');
+      showAdminError(err.response?.data?.message || 'Thao tác duyệt món ăn thất bại!');
     }
   };
 
-  const handleDeleteFood = async (foodId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn gỡ món ăn này khỏi thực đơn cửa hàng không?')) return;
-    try {
-      const res = await API.delete(`/admin/foods/${foodId}`);
-      if (res.data.status === 'success') {
-        setSuccessMsg('🗑️ Đã xóa món ăn thành công!');
-        setFoods(foods.filter(f => f._id !== foodId));
+  const handleDeleteFood = (foodId) => {
+    showAdminConfirm(
+      'Bạn có chắc chắn muốn gỡ món ăn này khỏi thực đơn cửa hàng không? Hành động này không thể hoàn tác.',
+      async () => {
+        try {
+          const res = await API.delete(`/admin/foods/${foodId}`);
+          if (res.data.status === 'success') {
+            setSuccessMsg('🗑️ Đã xóa món ăn thành công!');
+            setFoods(prev => prev.filter(f => f._id !== foodId));
+          }
+        } catch (err) {
+          showAdminError(err.response?.data?.message || 'Xóa món ăn thất bại!');
+        }
       }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Xóa món ăn thất bại!');
-    }
+    );
   };
 
   // ==========================================
@@ -245,7 +269,7 @@ const AdminDashboard = () => {
         setRestaurants(restaurants.map(r => r._id === restaurantId ? { ...r, status } : r));
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Duyệt hồ sơ nhà hàng thất bại!');
+      showAdminError(err.response?.data?.message || 'Duyệt hồ sơ nhà hàng thất bại!');
     }
   };
 
@@ -264,7 +288,7 @@ const AdminDashboard = () => {
         }
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Cập nhật tiến độ vận đơn thất bại!');
+      showAdminError(err.response?.data?.message || 'Cập nhật tiến độ vận đơn thất bại!');
     }
   };
 
@@ -858,6 +882,65 @@ const AdminDashboard = () => {
         )}
 
       </div>
+
+      {/* ❌ MODAL THÔNG BÁO LỖI GIỮA TRANG - ADMIN */}
+      {showErrModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.88)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#111827', width: '420px', padding: '32px', borderRadius: '16px', border: '1px solid rgba(239,68,68,0.25)', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.7)', boxSizing: 'border-box', animation: 'adminFadeIn 0.3s ease-out' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>❌</div>
+            <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#ef4444', fontWeight: '800' }}>Thao Tác Thất Bại</h4>
+            <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.7', margin: '0 0 24px 0', fontWeight: '500' }}>
+              {errModalMsg}
+            </p>
+            <button
+              onClick={() => setShowErrModal(false)}
+              style={{ padding: '10px 32px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' }}
+              onMouseOver={(e) => e.target.style.opacity = '0.85'}
+              onMouseOut={(e) => e.target.style.opacity = '1'}
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ MODAL XÁC NHẬN HÀNH ĐỘNG NGUY HIỂM - THAY THẾ window.confirm() */}
+      {showConfirmModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.88)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#111827', width: '440px', padding: '32px', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.25)', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.7)', boxSizing: 'border-box', animation: 'adminFadeIn 0.3s ease-out' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚠️</div>
+            <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#f59e0b', fontWeight: '800' }}>Xác Nhận Hành Động</h4>
+            <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.7', margin: '0 0 28px 0', fontWeight: '500' }}>
+              {confirmMsg}
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                style={{ padding: '10px 28px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #374151', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseOver={(e) => { e.target.style.borderColor = '#94a3b8'; e.target.style.color = '#fff'; }}
+                onMouseOut={(e) => { e.target.style.borderColor = '#374151'; e.target.style.color = '#94a3b8'; }}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={() => { setShowConfirmModal(false); if (confirmCallback) confirmCallback(); }}
+                style={{ padding: '10px 28px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' }}
+                onMouseOver={(e) => e.target.style.opacity = '0.85'}
+                onMouseOut={(e) => e.target.style.opacity = '1'}
+              >
+                Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes adminFadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 };
