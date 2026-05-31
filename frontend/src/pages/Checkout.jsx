@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { createOrderAPI } from '../services/api';
 
 const Checkout = () => {
   const location = useLocation();
@@ -18,9 +19,18 @@ const Checkout = () => {
 
   const [paymentMethod, setPaymentMethod] = useState('COD'); // Mặc định: Tiền mặt
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [orderMode, setOrderMode] = useState('single');
-  const [memberInput, setMemberInput] = useState('');
-  const [groupMembers, setGroupMembers] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // ==========================================
+  // STATE QUẢN LÝ MODAL THÔNG BÁO LỖI GIỮA MÀN HÌNH
+  // ==========================================
+  const [showErrModal, setShowErrModal] = useState(false);
+  const [errModalMsg, setErrModalMsg] = useState('');
+
+  const showError = (msg) => {
+    setErrModalMsg(msg);
+    setShowErrModal(true);
+  };
 
   // --- TÍNH TOÁN HÓA ĐƠN ---
   const totalMoney = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -34,40 +44,31 @@ const Checkout = () => {
     setShippingInfo(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAddGroupMember = () => {
-    const nextMember = memberInput.trim();
-    if (!nextMember) return;
-
-    if (groupMembers.includes(nextMember)) {
-      alert('Thành viên này đã có trong đơn nhóm rồi!');
-      return;
-    }
-
-    if (groupMembers.length >= 19) {
-      alert('Đơn đặt hàng nhóm chỉ hỗ trợ tối đa 20 người tính cả trưởng nhóm!');
-      return;
-    }
-
-    setGroupMembers(prev => [...prev, nextMember]);
-    setMemberInput('');
-  };
-
-  const handleRemoveGroupMember = (member) => {
-    setGroupMembers(prev => prev.filter(item => item !== member));
-  };
-
-  const handlePlaceOrder = (e) => {
-    e.preventDefault();
+  const handlePlaceOrder = async (e) => {
+    if (e) e.preventDefault();
     if (!shippingInfo.address.trim()) {
-      alert('Vui lòng nhập địa chỉ giao hàng để TasteByte gửi shipper đến nhé!');
+      showError('Vui lòng nhập địa chỉ giao hàng để TasteByte gửi shipper đến nhé! 📍');
       return;
     }
-    if (isGroupOrder && groupMembers.length === 0) {
-      alert('Vui lòng thêm ít nhất 1 thành viên để tạo đơn đặt hàng nhóm!');
-      return;
+    
+    setLoading(true);
+    try {
+      const orderPayload = {
+        shipping_address: shippingInfo.address,
+        payment_method: paymentMethod,
+        items: selectedItems,
+        note: shippingInfo.note
+      };
+      
+      const res = await createOrderAPI(orderPayload);
+      if (res.data.status === 'success') {
+        setShowSuccessModal(true);
+      }
+    } catch (err) {
+      showError(err.response?.data?.message || 'Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại!');
+    } finally {
+      setLoading(false);
     }
-    // Kích hoạt Modal đặt hàng thành công
-    setShowSuccessModal(true);
   };
 
   const handleCloseSuccess = () => {
@@ -259,17 +260,39 @@ const Checkout = () => {
 
               <button 
                 onClick={handlePlaceOrder}
-                style={{ width: '100%', backgroundColor: '#10b981', color: 'white', border: 'none', padding: '14px 0', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)', transition: 'background-color 0.2s' }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}
+                disabled={loading}
+                style={{ width: '100%', backgroundColor: loading ? '#4b5563' : '#10b981', color: 'white', border: 'none', padding: '14px 0', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '16px', boxShadow: loading ? 'none' : '0 4px 12px rgba(16,185,129,0.3)', transition: 'background-color 0.2s' }}
+                onMouseOver={(e) => { if (!loading) e.target.style.backgroundColor = '#059669'; }}
+                onMouseOut={(e) => { if (!loading) e.target.style.backgroundColor = '#10b981'; }}
               >
-                🚀 XÁC NHẬN ĐẶT ĐƠN HÀNG
+                {loading ? '⏳ ĐANG KHỞI TẠO ĐƠN HÀNG...' : '🚀 XÁC NHẬN ĐẶT ĐƠN HÀNG'}
               </button>
             </div>
           </div>
 
         </div>
       </div>
+
+      {/* ❌ MODAL THÔNG BÁO LỖI GIỮA TRANG */}
+      {showErrModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#111827', width: '420px', padding: '32px', borderRadius: '16px', border: '1px solid #ef444440', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)', boxSizing: 'border-box', animation: 'modalFadeIn 0.3s ease-out' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚠️</div>
+            <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#ef4444', fontWeight: '800' }}>Thông Báo</h4>
+            <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.7', margin: '0 0 24px 0', fontWeight: '500' }}>
+              {errModalMsg}
+            </p>
+            <button
+              onClick={() => setShowErrModal(false)}
+              style={{ padding: '10px 32px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' }}
+              onMouseOver={(e) => e.target.style.opacity = '0.85'}
+              onMouseOut={(e) => e.target.style.opacity = '1'}
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 🎉 CUSTOM SUCCESS MODAL - ĐẶT HÀNG THÀNH CÔNG */}
       {showSuccessModal && (
@@ -294,6 +317,13 @@ const Checkout = () => {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes modalFadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 };

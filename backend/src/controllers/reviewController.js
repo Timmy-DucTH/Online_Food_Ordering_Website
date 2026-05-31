@@ -1,111 +1,64 @@
 const Review = require('../models/review');
-const Order = require('../models/order');
 
+// 1. Khách hàng tạo đánh giá mới
 exports.createReview = async (req, res) => {
   try {
     const { order_id, customer_id, store_id, rating, comment } = req.body;
 
+    // Kiểm tra dữ liệu đầu vào cơ bản
     if (!order_id || !customer_id || !store_id || !rating) {
-      return res.status(400).json({
+      return res.status(400).json({ 
         status: 'fail',
-        message: 'Vui long nhap day du order_id, customer_id, store_id va rating!'
+        message: 'Vui lòng cung cấp đủ mã đơn hàng, khách hàng, cửa hàng và số sao!' 
       });
     }
 
-    const order = await Order.findById(order_id);
-    if (!order) {
-      return res.status(404).json({ status: 'fail', message: 'Khong tim thay don hang de danh gia!' });
-    }
-
-    if (order.status !== 'completed') {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Chi don hang da hoan thanh moi duoc danh gia!'
-      });
-    }
-
-    if (order.creator_id.toString() !== customer_id) {
-      return res.status(403).json({
-        status: 'fail',
-        message: 'Chi nguoi tao don hang moi duoc danh gia don nay!'
-      });
-    }
-
-    const review = await Review.create({
+    // Tạo bản ghi đánh giá mới
+    const newReview = new Review({
       order_id,
       customer_id,
       store_id,
       rating,
-      comment: comment || ''
+      comment
     });
 
-    res.status(201).json({
+    const savedReview = await newReview.save();
+    
+    res.status(201).json({ 
       status: 'success',
-      message: 'Da gui danh gia quan thanh cong!',
-      data: review
+      message: 'Cảm ơn bạn đã đánh giá!', 
+      data: savedReview 
     });
+
   } catch (error) {
+    // Xử lý lỗi trùng lặp (11000 là mã lỗi của MongoDB khi vi phạm unique: true)
     if (error.code === 11000) {
-      return res.status(409).json({
+      return res.status(400).json({ 
         status: 'fail',
-        message: 'Don hang nay da co danh gia roi!'
+        message: 'Đơn hàng này đã được đánh giá rồi, bạn không thể đánh giá lại!' 
       });
     }
-
-    res.status(500).json({ status: 'error', message: error.message });
+    res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
   }
 };
 
+// 2. Lấy danh sách đánh giá của một cửa hàng (Hiển thị trên Frontend)
 exports.getReviewsByRestaurant = async (req, res) => {
   try {
-    const { restaurantId } = req.params;
+    const { store_id } = req.params;
 
-    const reviews = await Review.find({ store_id: restaurantId })
-      .populate('customer_id', 'full_name email')
-      .sort({ createdAt: -1 });
+    // Tìm tất cả đánh giá của store_id này
+    // populate() giúp lấy thêm tên và avatar của khách hàng thay vì chỉ hiển thị mỗi cái ID
+    const reviews = await Review.find({ store_id })
+      .populate('customer_id', 'full_name email') // Giả sử model user của bạn có trường full_name
+      .sort({ createdAt: -1 }); // Sắp xếp mới nhất lên đầu
 
-    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-    const averageRating = reviews.length > 0 ? Number((totalRating / reviews.length).toFixed(1)) : 0;
-
-    res.status(200).json({
+    res.status(200).json({ 
       status: 'success',
-      message: 'Lay danh sach danh gia thanh cong!',
-      data: {
-        averageRating,
-        totalReviews: reviews.length,
-        reviews
-      }
+      results: reviews.length,
+      data: reviews 
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-};
-
-exports.replyReview = async (req, res) => {
-  try {
-    const { reviewId } = req.params;
-    const { reply } = req.body;
-
-    if (!reply || !reply.trim()) {
-      return res.status(400).json({ status: 'fail', message: 'Noi dung phan hoi khong duoc de trong!' });
-    }
-
-    const review = await Review.findByIdAndUpdate(
-      reviewId,
-      { reply_from_store: reply.trim() },
-      { new: true, runValidators: true }
-    );
-
-    if (!review) {
-      return res.status(404).json({ status: 'fail', message: 'Khong tim thay danh gia!' });
-    }
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Da phan hoi danh gia thanh cong!',
-      data: review
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+    res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
   }
 };

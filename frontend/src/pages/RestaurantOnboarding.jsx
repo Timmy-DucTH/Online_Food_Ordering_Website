@@ -1,11 +1,23 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import API from '../services/api';
 
 const RestaurantOnboarding = () => {
   const navigate = useNavigate();
   const [localIsLoggedIn] = useState(() => !!localStorage.getItem('token'));
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // ==========================================
+  // STATE QUẢN LÝ MODAL THÔNG BÁO GIỮA MÀN HÌNH
+  // ==========================================
+  const [showNotifModal, setShowNotifModal] = useState(false);
+  const [notifContent, setNotifContent] = useState({ title: '', message: '', type: 'error' });
+
+  const showError = (message, title = '❌ Có Lỗi Xảy Ra') => {
+    setNotifContent({ title, message, type: 'error' });
+    setShowNotifModal(true);
+  };
 
   // Đọc dữ liệu cũ ngay khi khởi tạo
   const [savedDataSnapshot] = useState(() => {
@@ -47,23 +59,46 @@ const RestaurantOnboarding = () => {
       }
     };
     reader.onerror = () => {
-      console.error("Lỗi trong quá trình đọc file ảnh.");
+      showError('Không thể đọc file ảnh. Vui lòng thử lại với định dạng JPG, PNG hoặc WEBP.', '⚠️ Lỗi Đọc File');
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const submissionData = {
-      ...formData,
-      shopAvatar,
-      businessLicense
-    };
+    // Kiểm tra token đăng nhập
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showError('Bạn cần đăng nhập trước khi gửi hồ sơ đăng ký cửa hàng. Vui lòng quay lại trang đăng nhập.', '🔒 Chưa Đăng Nhập');
+      return;
+    }
 
-    localStorage.setItem('restaurantStatus', 'pending');
-    localStorage.setItem('pendingRestaurantData', JSON.stringify(submissionData));
-    setShowSuccessModal(true);
+    try {
+      const submissionData = {
+        store_name: formData.shopName,
+        merchant_name: formData.ownerName,
+        address: formData.shopAddress,
+        license_image: businessLicense || 'https://via.placeholder.com/150',
+        hygiene_image: shopAvatar || 'https://via.placeholder.com/150'
+      };
+
+      const res = await API.post('/restaurants/register', submissionData);
+      if (res.data.status === 'success') {
+        localStorage.setItem('restaurantStatus', 'pending');
+        localStorage.setItem('pendingRestaurantData', JSON.stringify({
+          shopName: formData.shopName,
+          shopAddress: formData.shopAddress,
+          ownerName: formData.ownerName,
+          phone: formData.phone,
+          email: formData.email
+        }));
+        setShowSuccessModal(true);
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Có lỗi xảy ra khi gửi hồ sơ đăng ký. Vui lòng kiểm tra kết nối và thử lại!';
+      showError(msg);
+    }
   };
 
   const handleConfirmSuccess = () => {
@@ -197,10 +232,35 @@ const RestaurantOnboarding = () => {
         </form>
       </div>
 
-      {/* HỘP THÔNG BÁO TỰ CHẾ (CUSTOM SUCCESS MODAL) - CHÍNH GIỮA MÀN HÌNH */}
+      {/* HỘP THÔNG BÁO LỖI GIỮA TRANG */}
+      {showNotifModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#111827', width: '420px', padding: '32px', borderRadius: '16px', border: `1px solid ${notifContent.type === 'error' ? '#ef444440' : '#10b98140'}`, textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)', boxSizing: 'border-box', animation: 'fadeIn 0.3s ease-out' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+              {notifContent.type === 'error' ? '❌' : '✅'}
+            </div>
+            <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: notifContent.type === 'error' ? '#ef4444' : '#10b981', fontWeight: '800' }}>
+              {notifContent.title}
+            </h4>
+            <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.6', margin: '0 0 24px 0', fontWeight: '500' }}>
+              {notifContent.message}
+            </p>
+            <button 
+              onClick={() => setShowNotifModal(false)}
+              style={{ padding: '10px 32px', backgroundColor: notifContent.type === 'error' ? '#ef4444' : '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' }}
+              onMouseOver={(e) => e.target.style.opacity = '0.85'}
+              onMouseOut={(e) => e.target.style.opacity = '1'}
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* HỘP THÔNG BÁO GỬI HỒ SƠ THÀNH CÔNG */}
       {showSuccessModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
-          <div style={{ backgroundColor: '#111827', border: '1px solid #1f2937', padding: '40px', borderRadius: '12px', textAlign: 'center', maxWidth: '450px', width: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.4)' }}>
+          <div style={{ backgroundColor: '#111827', border: '1px solid #1f2937', padding: '40px', borderRadius: '12px', textAlign: 'center', maxWidth: '450px', width: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.4)', animation: 'fadeIn 0.3s ease-out' }}>
             <div style={{ fontSize: '60px', marginBottom: '20px' }}>🚀</div>
             <h3 style={{ color: '#10b981', fontSize: '22px', margin: '0 0 15px 0', fontWeight: '600' }}>Gửi hồ sơ thành công!</h3>
             <p style={{ color: '#94a3b8', lineHeight: '1.6', marginBottom: '30px', fontSize: '14px' }}>
@@ -217,6 +277,13 @@ const RestaurantOnboarding = () => {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 };

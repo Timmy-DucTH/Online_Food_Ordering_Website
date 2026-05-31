@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 
 // Thư viện dotenv giúp nạp các biến môi trường từ file .env kế bên file sever.js
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config();
 
 // =================================================================
 // CẤU HÌNH BIẾN MÔI TRƯỜNG VỚI GIÁ TRỊ DỰ PHÒNG AN TOÀN
