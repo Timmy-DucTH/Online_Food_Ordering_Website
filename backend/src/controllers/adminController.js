@@ -1,35 +1,33 @@
 const User = require('../models/user');
 const AccountLog = require('../models/accountLog');
 
-// NGHIỆP VỤ 6: Admin chủ động khóa/mở khóa tài khoản người dùng khi phát hiện vi phạm (BM3, QĐ4) [cite: 124, 139, 141, 143]
 exports.toggleUserBanStatus = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { action_type, reason, duration_days } = req.body; // action_type: 'ban' hoặc 'unban'
+    const { action_type, reason, duration_days } = req.body;
 
     if (!['ban', 'unban'].includes(action_type)) {
-      return res.status(400).json({ status: 'fail', message: 'Hành động xử lý không hợp lệ!' });
+      return res.status(400).json({ status: 'fail', message: 'Hanh dong xu ly khong hop le!' });
     }
 
     const targetStatus = action_type === 'ban' ? 'banned' : 'active';
     const user = await User.findByIdAndUpdate(userId, { status: targetStatus }, { new: true });
 
     if (!user) {
-      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy người dùng!' });
+      return res.status(404).json({ status: 'fail', message: 'Khong tim thay nguoi dung!' });
     }
 
-    // GHI LẠI NHẬT KÝ KHÓA TÀI KHOẢN (BM 3) [cite: 139]
     await AccountLog.create({
       user_id: userId,
       action_type,
-      reason, [cite: 140]
+      reason,
       duration_days: duration_days || null,
       performed_by: 'ADMIN_PANEL'
     });
 
     res.status(200).json({
       status: 'success',
-      message: `Đã thực hiện lệnh [${action_type.toUpperCase()}] thành công đối với tài khoản ${user.email}`,
+      message: `Da thuc hien lenh ${action_type.toUpperCase()} thanh cong doi voi tai khoan ${user.email}`,
       data: user
     });
   } catch (error) {

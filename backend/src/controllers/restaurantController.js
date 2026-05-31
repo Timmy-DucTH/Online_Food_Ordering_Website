@@ -1,14 +1,13 @@
 const Restaurant = require('../models/restaurant');
 const Menu = require('../models/menu');
 
-// NGHIỆP VỤ 1: Admin duyệt hồ sơ đăng ký Cửa hàng (BM2, QĐ2) [cite: 124, 134, 135]
 exports.approveRestaurant = async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { status } = req.body; // 'approved' hoặc 'rejected' [cite: 136]
+    const { status } = req.body;
 
     if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ status: 'fail', message: 'Trạng thái duyệt không hợp lệ!' });
+      return res.status(400).json({ status: 'fail', message: 'Trang thai duyet khong hop le!' });
     }
 
     const restaurant = await Restaurant.findByIdAndUpdate(
@@ -18,10 +17,9 @@ exports.approveRestaurant = async (req, res) => {
     );
 
     if (!restaurant) {
-      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy thông tin nhà hàng!' });
+      return res.status(404).json({ status: 'fail', message: 'Khong tim thay thong tin nha hang!' });
     }
 
-    // Nếu được duyệt, tự động khởi tạo 1 Thực đơn trống cho nhà hàng đó
     if (status === 'approved') {
       const existingMenu = await Menu.findOne({ store_id: restaurantId });
       if (!existingMenu) {
@@ -31,7 +29,7 @@ exports.approveRestaurant = async (req, res) => {
 
     res.status(200).json({
       status: 'success',
-      message: `Đã cập nhật trạng thái hồ sơ nhà hàng thành: ${status}`,
+      message: `Da cap nhat trang thai ho so nha hang thanh: ${status}`,
       data: restaurant
     });
   } catch (error) {
@@ -39,24 +37,21 @@ exports.approveRestaurant = async (req, res) => {
   }
 };
 
-// NGHIỆP VỤ 2: Quản lý thực đơn - Thêm món ăn mới vào Menu (BM4, QĐ5) [cite: 124, 145, 146]
 exports.addMenuItem = async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { name, image, price, category } = req.body;
 
-    // RÀNG BUỘC QĐ 5: Đơn giá món ăn phải lớn hơn 0 [cite: 146, 147]
     if (!price || price <= 0) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Quy định hệ thống: Đơn giá món ăn nhập vào phải lớn hơn 0đ!' [cite: 147]
+        message: 'Don gia mon an phai lon hon 0!'
       });
     }
 
-    // Tìm Menu của nhà hàng và đẩy món ăn mới vào mảng items (Embedding)
     const menu = await Menu.findOne({ store_id: restaurantId });
     if (!menu) {
-      return res.status(404).json({ status: 'fail', message: 'Nhà hàng này chưa được tạo thực đơn!' });
+      return res.status(404).json({ status: 'fail', message: 'Nha hang nay chua duoc tao thuc don!' });
     }
 
     menu.items.push({ name, image, price, category, is_available: true });
@@ -64,7 +59,7 @@ exports.addMenuItem = async (req, res) => {
 
     res.status(201).json({
       status: 'success',
-      message: '➕ Thêm món ăn vào thực đơn thành công!',
+      message: 'Them mon an vao thuc don thanh cong!',
       data: menu
     });
   } catch (error) {
@@ -72,21 +67,19 @@ exports.addMenuItem = async (req, res) => {
   }
 };
 
-// NGHIỆP VỤ 3: Thiết lập trạng thái Còn/Hết món ăn nhanh 
 exports.toggleItemAvailability = async (req, res) => {
   try {
     const { restaurantId, itemId } = req.params;
-    const { is_available } = req.body; // true hoặc false
+    const { is_available } = req.body;
 
     const menu = await Menu.findOne({ store_id: restaurantId });
     if (!menu) {
-      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy thực đơn!' });
+      return res.status(404).json({ status: 'fail', message: 'Khong tim thay thuc don!' });
     }
 
-    // Tìm món ăn con trong mảng để cập nhật trạng thái
     const item = menu.items.id(itemId);
     if (!item) {
-      return res.status(404).json({ status: 'fail', message: 'Món ăn không tồn tại trong thực đơn!' });
+      return res.status(404).json({ status: 'fail', message: 'Mon an khong ton tai trong thuc don!' });
     }
 
     item.is_available = is_available;
@@ -94,7 +87,7 @@ exports.toggleItemAvailability = async (req, res) => {
 
     res.status(200).json({
       status: 'success',
-      message: `Đã cập nhật trạng thái món ăn thành: ${is_available ? 'Còn món' : 'Hết món'}`,
+      message: `Da cap nhat trang thai mon an thanh: ${is_available ? 'Con mon' : 'Het mon'}`,
       data: item
     });
   } catch (error) {

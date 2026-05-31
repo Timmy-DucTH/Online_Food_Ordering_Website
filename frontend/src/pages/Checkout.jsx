@@ -18,21 +18,52 @@ const Checkout = () => {
 
   const [paymentMethod, setPaymentMethod] = useState('COD'); // Mặc định: Tiền mặt
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderMode, setOrderMode] = useState('single');
+  const [memberInput, setMemberInput] = useState('');
+  const [groupMembers, setGroupMembers] = useState([]);
 
   // --- TÍNH TOÁN HÓA ĐƠN ---
   const totalMoney = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shippingFee = totalMoney > 0 ? 15000 : 0; // Phí ship cố định 15k
   const finalTotal = totalMoney + shippingFee;
+  const isGroupOrder = orderMode === 'group';
+  const totalParticipants = isGroupOrder ? groupMembers.length + 1 : 1;
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setShippingInfo(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleAddGroupMember = () => {
+    const nextMember = memberInput.trim();
+    if (!nextMember) return;
+
+    if (groupMembers.includes(nextMember)) {
+      alert('Thành viên này đã có trong đơn nhóm rồi!');
+      return;
+    }
+
+    if (groupMembers.length >= 19) {
+      alert('Đơn đặt hàng nhóm chỉ hỗ trợ tối đa 20 người tính cả trưởng nhóm!');
+      return;
+    }
+
+    setGroupMembers(prev => [...prev, nextMember]);
+    setMemberInput('');
+  };
+
+  const handleRemoveGroupMember = (member) => {
+    setGroupMembers(prev => prev.filter(item => item !== member));
+  };
+
   const handlePlaceOrder = (e) => {
     e.preventDefault();
     if (!shippingInfo.address.trim()) {
       alert('Vui lòng nhập địa chỉ giao hàng để TasteByte gửi shipper đến nhé!');
+      return;
+    }
+    if (isGroupOrder && groupMembers.length === 0) {
+      alert('Vui lòng thêm ít nhất 1 thành viên để tạo đơn đặt hàng nhóm!');
       return;
     }
     // Kích hoạt Modal đặt hàng thành công
@@ -99,6 +130,64 @@ const Checkout = () => {
               </form>
             </div>
 
+            {/* Che do dat hang */}
+            <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '8px', border: '1px solid #1f2937', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#00e676', borderBottom: '2px solid #10b981', paddingBottom: '8px', fontWeight: '700' }}>
+                Chế Độ Đặt Hàng
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px', border: orderMode === 'single' ? '1px solid #10b981' : '1px solid #1f2937', borderRadius: '8px', backgroundColor: orderMode === 'single' ? 'rgba(16,185,129,0.05)' : 'transparent', cursor: 'pointer' }}>
+                  <input type="radio" name="orderMode" checked={orderMode === 'single'} onChange={() => setOrderMode('single')} style={{ width: '18px', height: '18px', accentColor: '#00e676' }} />
+                  <span style={{ fontWeight: '700', color: '#e2e8f0', fontSize: '14px' }}>Đơn cá nhân</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px', border: orderMode === 'group' ? '1px solid #10b981' : '1px solid #1f2937', borderRadius: '8px', backgroundColor: orderMode === 'group' ? 'rgba(16,185,129,0.05)' : 'transparent', cursor: 'pointer' }}>
+                  <input type="radio" name="orderMode" checked={orderMode === 'group'} onChange={() => setOrderMode('group')} style={{ width: '18px', height: '18px', accentColor: '#00e676' }} />
+                  <span style={{ fontWeight: '700', color: '#e2e8f0', fontSize: '14px' }}>Đơn nhóm</span>
+                </label>
+              </div>
+
+              {isGroupOrder && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      value={memberInput}
+                      onChange={(e) => setMemberInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddGroupMember();
+                        }
+                      }}
+                      placeholder="Nhập email/số điện thoại thành viên"
+                      style={{ flex: 1, minWidth: '220px', padding: '12px', backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '6px', color: '#fff', outline: 'none' }}
+                    />
+                    <button type="button" onClick={handleAddGroupMember} style={{ padding: '12px 18px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}>
+                      Thêm
+                    </button>
+                  </div>
+
+                  <div style={{ color: '#94a3b8', fontSize: '13px' }}>
+                    Số người tham gia: <strong style={{ color: '#00e676' }}>{totalParticipants}/20</strong>
+                  </div>
+
+                  {groupMembers.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {groupMembers.map(member => (
+                        <span key={member} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#0b0f19', border: '1px solid #1f2937', color: '#e2e8f0', borderRadius: '999px', padding: '8px 10px', fontSize: '13px' }}>
+                          {member}
+                          <button type="button" onClick={() => handleRemoveGroupMember(member)} style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', fontWeight: '800', padding: 0 }}>
+                            x
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Phương Thức Thanh Toán */}
             <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '8px', border: '1px solid #1f2937', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
               <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#00e676', borderBottom: '2px solid #10b981', paddingBottom: '8px', fontWeight: '700' }}>
@@ -157,6 +246,10 @@ const Checkout = () => {
                   <span>Phí giao hàng (Shipper):</span>
                   <span style={{ color: '#fff' }}>{shippingFee.toLocaleString()}đ</span>
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                  <span>Loại đơn:</span>
+                  <span style={{ color: '#fff' }}>{isGroupOrder ? `Đơn nhóm (${totalParticipants} người)` : 'Đơn cá nhân'}</span>
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
@@ -185,7 +278,7 @@ const Checkout = () => {
             <div style={{ fontSize: '60px', marginBottom: '15px' }}>🛵💨🟢</div>
             <h3 style={{ color: '#00e676', fontSize: '24px', margin: '0 0 12px 0', fontWeight: '700' }}>TasteByte Đang Giao Hàng!</h3>
             <p style={{ color: '#94a3b8', lineHeight: '1.6', fontSize: '14px', marginBottom: '15px' }}>
-              Đơn hàng của bạn đang được nhà hàng chuẩn bị. Tài xế sẽ ship siêu tốc tới địa chỉ: <br />
+              {isGroupOrder ? `Đơn nhóm ${totalParticipants} người` : 'Đơn hàng của bạn'} đang được nhà hàng chuẩn bị. Tài xế sẽ ship siêu tốc tới địa chỉ: <br />
               <strong style={{ color: '#ffffff', display: 'block', marginTop: '5px' }}>{shippingInfo.address}</strong>
             </p>
             <div style={{ backgroundColor: '#0b0f19', padding: '12px', borderRadius: '6px', marginBottom: '25px', border: '1px solid #1f2937' }}>

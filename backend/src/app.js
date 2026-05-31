@@ -34,12 +34,12 @@ app.get('/health', (req, res) => {
 
 // Đăng ký các cụm API nghiệp vụ chính kết nối tới thư mục routes/
 app.use('/api/auth', require('./routes/authRoutes'));           // Quản lý Đăng ký/Đăng nhập (BM1)
-// app.use('/api/restaurants', require('./routes/restaurantRoutes')); // Quản lý Đối tác/Nhà hàng (BM2, BM4)
-// app.use('/api/orders', require('./routes/orderRoutes'));         // Quản lý Đơn hàng cá nhân/nhóm (BM5, BM6)
-
-// Bạn có thể mở thêm các cụm routes này sau khi tạo file tương ứng:
-// app.use('/api/posts', require('./routes/postRoutes'));         // Mạng xã hội & Tương tác (BM7)
-// app.use('/api/reports', require('./routes/reportRoutes'));     // Thống kê & Báo cáo doanh thu (BM8, BM9)
+app.use('/api/restaurants', require('./routes/restaurantRoutes')); // Quản lý Đối tác/Nhà hàng (BM2, BM4)
+app.use('/api/orders', require('./routes/orderRoutes'));         // Quản lý Đơn hàng cá nhân/nhóm (BM5, BM6)
+app.use('/api/posts', require('./routes/postRoutes'));         // Mạng xã hội & Tương tác (BM7)
+app.use('/api/reports', require('./routes/reportRoutes'));     // Thống kê & Báo cáo doanh thu (BM8, BM9)
+app.use('/api/reviews', require('./routes/reviewRoutes'));     // Review/đánh giá quán
+app.use('/api/notifications', require('./routes/notificationRoutes')); // Thông báo hệ thống
 
 
 // ==========================================

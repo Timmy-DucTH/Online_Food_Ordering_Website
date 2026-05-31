@@ -1,33 +1,49 @@
 const Post = require('../models/post');
 
-// NGHIỆP VỤ 9: Viết bài đăng tương tác và đính kèm đa phương tiện (BM7, QĐ9) 
+exports.getPosts = async (req, res) => {
+  try {
+    const posts = await Post.find()
+      .populate('author_id', 'full_name email role')
+      .populate('Comments.user_id', 'full_name email')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Lay danh sach bai dang thanh cong!',
+      data: posts
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 exports.createPost = async (req, res) => {
   try {
     const { author_id, content, images, videos } = req.body;
 
-    // RÀNG BUỘC KIỂM DUYỆT TỪ NGỮ THÔ TỤC (Áp dụng QĐ 9: Không vi phạm pháp luật/thuần phong mỹ tục) [cite: 160]
-    const toxicKeywords = ['đảo chính', 'phản động', 'lừa đảo'];
-    const containsToxic = toxicKeywords.some(keyword => content.toLowerCase().includes(keyword));
+    const toxicKeywords = ['dao chinh', 'phan dong', 'lua dao'];
+    const normalizedContent = String(content || '').toLowerCase();
+    const containsToxic = toxicKeywords.some(keyword => normalizedContent.includes(keyword));
 
     if (containsToxic) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Bài đăng bị hệ thống chặn tự động do chứa nội dung hoặc từ ngữ vi phạm quy định!' [cite: 160]
+        message: 'Bai dang bi chan do chua noi dung vi pham quy dinh!'
       });
     }
 
     const newPost = new Post({
       author_id,
-      content, [cite: 159]
-      images: images || [], [cite: 159]
-      videos: videos || [] [cite: 159]
+      content,
+      images: images || [],
+      videos: videos || []
     });
 
     await newPost.save();
 
     res.status(201).json({
       status: 'success',
-      message: '📝 Đã đăng tải bài viết lên tường mạng xã hội cộng đồng!',
+      message: 'Da dang tai bai viet thanh cong!',
       data: newPost
     });
   } catch (error) {
@@ -35,7 +51,40 @@ exports.createPost = async (req, res) => {
   }
 };
 
-// NGHIỆP VỤ 10: Tương tác bài viết (Thích bài viết - Reacts) 
+exports.addComment = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { user_id, content } = req.body;
+
+    if (!user_id || !content || !content.trim()) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Vui long nhap day du user_id va noi dung binh luan!'
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ status: 'fail', message: 'Bai viet khong ton tai!' });
+    }
+
+    post.Comments.push({
+      user_id,
+      content: content.trim()
+    });
+
+    await post.save();
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Da them binh luan thanh cong!',
+      data: post
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 exports.toggleReactPost = async (req, res) => {
   try {
     const { postId } = req.params;
@@ -43,11 +92,10 @@ exports.toggleReactPost = async (req, res) => {
 
     const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({ status: 'fail', message: 'Bài viết không tồn tại!' });
+      return res.status(404).json({ status: 'fail', message: 'Bai viet khong ton tai!' });
     }
 
-    // Nếu đã like rồi thì bấm lại sẽ là Bỏ thích (Unlike), ngược lại thì thêm ID vào mảng reacts
-    const isReacted = post.reacts.includes(user_id);
+    const isReacted = post.reacts.some(id => id.toString() === user_id);
     if (isReacted) {
       post.reacts.pull(user_id);
     } else {
@@ -57,7 +105,7 @@ exports.toggleReactPost = async (req, res) => {
     await post.save();
     res.status(200).json({
       status: 'success',
-      message: isReacted ? '💔 Đã bỏ thích bài viết' : '❤️ Đã thích bài viết thành công!',
+      message: isReacted ? 'Da bo thich bai viet' : 'Da thich bai viet thanh cong!',
       data: post
     });
   } catch (error) {

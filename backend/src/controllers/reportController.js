@@ -21,7 +21,7 @@ exports.getRevenueReport = async (req, res) => {
     const report = await Order.aggregate([
       {
         $match: {
-          restaurant_id: new mongoose.Types.ObjectId(restaurantId),
+          store_id: new mongoose.Types.ObjectId(restaurantId),
           status: 'completed', // QĐ 10: Chỉ tính toán trên các đơn hàng đã giao thành công
           createdAt: {
             $gte: new Date(startDate),
@@ -31,7 +31,7 @@ exports.getRevenueReport = async (req, res) => {
       },
       {
         $group: {
-          _id: '$restaurant_id',
+          _id: '$store_id',
           totalRevenue: { $sum: '$total_price' }, // Tính tổng doanh thu gồm cả món ăn và ship
           totalOrders: { $sum: 1 }
         }
@@ -70,7 +70,7 @@ exports.getTopSellingItems = async (req, res) => {
     const topItems = await Order.aggregate([
       {
         $match: {
-          restaurant_id: new mongoose.Types.ObjectId(restaurantId),
+          store_id: new mongoose.Types.ObjectId(restaurantId),
           status: 'completed' // Chỉ thống kê dựa trên đơn hàng mua thành công thực tế
         }
       },

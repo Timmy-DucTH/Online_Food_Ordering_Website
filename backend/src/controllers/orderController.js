@@ -1,61 +1,65 @@
 const Order = require('../models/order');
 const User = require('../models/user');
 const Restaurant = require('../models/restaurant');
+const AccountLog = require('../models/accountLog');
 
-// NGHIỆP VỤ 4: Khởi tạo/Lập đơn hàng cá nhân hoặc đơn hàng nhóm (BM5, BM6, QĐ6, QĐ7, QĐ8) [cite: 124, 148, 150, 151, 155, 157]
 exports.createOrder = async (req, res) => {
   try {
-    const { restaurant_id, creator_id, order_type, shipping_address, distance_km, items, members } = req.body;
+    const {
+      restaurant_id,
+      creator_id,
+      order_type,
+      shipping_address,
+      distance_km,
+      items,
+      members,
+      payment_method,
+      note
+    } = req.body;
 
-    // RÀNG BUỘC QĐ 6: Khoảng cách không được vượt quá 15km [cite: 150]
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ status: 'fail', message: 'Don hang phai co it nhat 1 mon an!' });
+    }
+
     if (distance_km > 15) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Hệ thống từ chối đặt hàng: Khoảng cách từ cửa hàng đến bạn vượt quá 15km!' [cite: 150]
+        message: 'Khoang cach tu cua hang den khach hang vuot qua 15km!'
       });
     }
 
-    // RÀNG BUỘC QĐ 8: Đơn đặt hàng theo nhóm không vượt quá 20 thành viên [cite: 157]
     if (order_type === 'group' && members && (members.length + 1) > 20) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Hệ thống từ chối: Số lượng thành viên tham gia đặt chung vượt quá giới hạn 20 người!' [cite: 157]
+        message: 'Don dat hang theo nhom khong duoc vuot qua 20 thanh vien!'
       });
     }
 
-    // TỰ ĐỘNG TÍNH TOÁN THEO QĐ 7 [cite: 151]
-    // 1. Thành tiền món ăn = tổng (số lượng * đơn giá) của các món [cite: 152]
-    let subtotal = 0;
-    items.forEach(item => {
-      subtotal += item.quantity * item.price; [cite: 152]
-    });
+    const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+    const shipping_fee = distance_km * 5000;
+    const total_price = subtotal + shipping_fee;
 
-    // 2. Phí vận chuyển = 5,000đ/km [cite: 153]
-    const shipping_fee = distance_km * 5000; [cite: 153]
-
-    // 3. Tổng tiền đơn hàng = thành tiền món ăn + phí vận chuyển [cite: 154]
-    const total_price = subtotal + shipping_fee; [cite: 154]
-
-    // Lưu đơn hàng vào database
     const newOrder = new Order({
       store_id: restaurant_id,
       creator_id,
       order_type: order_type || 'single',
-      members: order_type === 'group' ? members : [],
+      members: order_type === 'group' ? members || [] : [],
       items,
       shipping_address,
       distance_km,
       shipping_fee,
       subtotal,
       total_price,
-      status: 'pending'
+      payment_method: payment_method || 'COD',
+      status: 'pending',
+      note
     });
 
     await newOrder.save();
 
     res.status(201).json({
       status: 'success',
-      message: '🛒 Đơn hàng đã được ghi nhận thành công trên hệ thống!',
+      message: 'Don hang da duoc ghi nhan thanh cong!',
       data: newOrder
     });
   } catch (error) {
@@ -63,43 +67,49 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// NGHIỆP VỤ 5: Cập nhật trạng thái đơn hàng và tự động tính điểm uy tín (QĐ 3) [cite: 124, 137]
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status, reason } = req.body; // 'completed', 'cancelled',... [cite: 138]
+    const { status, reason } = req.body;
+
+    if (!['pending', 'preparing', 'shipping', 'completed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ status: 'fail', message: 'Trang thai don hang khong hop le!' });
+    }
 
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy mã đơn hàng này!' });
+      return res.status(404).json({ status: 'fail', message: 'Khong tim thay ma don hang nay!' });
     }
 
     order.status = status;
     await order.save();
 
-    // TỰ ĐỘNG ĐÁNH GIÁ CHỈ SỐ UY TÍN DỰA TRÊN TRẠNG THÁI CUỐI CỦA ĐƠN HÀNG (QĐ 3) [cite: 137, 138]
     if (status === 'completed') {
-      // Hoàn thành đơn hàng: Cộng 1 điểm uy tín cho cả khách và chủ quán [cite: 138]
       await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: 1 } });
-      const rest = await Restaurant.findById(order.store_id);
-      if (rest) await User.findByIdAndUpdate(rest.owner_id, { $inc: { credit_score: 1 } });
-    } 
-    else if (status === 'cancelled' && reason === 'Đơn ảo/Hủy không lý do') {
-      // Khách hàng hủy đơn không lý do hoặc tạo đơn ảo: Trừ nặng 5 điểm uy tín [cite: 138]
+      const restaurant = await Restaurant.findById(order.store_id);
+      if (restaurant) {
+        await User.findByIdAndUpdate(restaurant.owner_id, { $inc: { credit_score: 1 } });
+      }
+    } else if (status === 'cancelled' && reason === 'fake_order') {
       await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: -5 } });
-      
-      // HỆ THỐNG TỰ ĐỘNG KHÓA TÀI KHOẢN (QĐ 4): Kiểm tra xem điểm uy tín có bị tụt xuống dưới 30 điểm không [cite: 141, 142]
+
       const userCheck = await User.findById(order.creator_id);
-      if (userCheck && userCheck.credit_score < 30) { [cite: 142]
-        userCheck.status = 'banned'; [cite: 142]
+      if (userCheck && userCheck.credit_score < 30) {
+        userCheck.status = 'banned';
         await userCheck.save();
-        // Ghi lại nhật ký khóa tự động hệ thống có thể làm ở phần AccountLog
+        await AccountLog.create({
+          user_id: userCheck._id,
+          action_type: 'ban',
+          reason: 'He thong tu dong khoa do diem uy tin duoi 30',
+          duration_days: 7,
+          performed_by: 'SYSTEM'
+        });
       }
     }
 
     res.status(200).json({
       status: 'success',
-      message: `Cập nhật trạng thái đơn hàng thành công sang [${status}]. Hệ thống đã đồng bộ điểm uy tín!`, [cite: 137]
+      message: `Cap nhat trang thai don hang thanh cong sang ${status}.`,
       data: order
     });
   } catch (error) {

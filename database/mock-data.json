@@ -1,0 +1,207 @@
+{
+  "users": [
+    {
+      "_id": "665000000000000000000001",
+      "phone": "0901234567",
+      "full_name": "Nguyen Van Khach",
+      "email": "khachhang@gmail.com",
+      "password": "12345678",
+      "role": "customer",
+      "credit_score": 100,
+      "status": "active"
+    },
+    {
+      "_id": "665000000000000000000002",
+      "phone": "0907654321",
+      "full_name": "Tran Thi Chu Quan",
+      "email": "chuquan@gmail.com",
+      "password": "12345678",
+      "role": "merchant",
+      "credit_score": 98,
+      "status": "active"
+    },
+    {
+      "_id": "665000000000000000000003",
+      "phone": "0912345678",
+      "full_name": "Le Minh Admin",
+      "email": "admin@ofow.vn",
+      "password": "12345678",
+      "role": "admin",
+      "credit_score": 100,
+      "status": "active"
+    },
+    {
+      "_id": "665000000000000000000004",
+      "phone": "0934567890",
+      "full_name": "Pham Hoang Nhom",
+      "email": "nhomorder@gmail.com",
+      "password": "12345678",
+      "role": "customer",
+      "credit_score": 88,
+      "status": "active"
+    }
+  ],
+  "restaurants": [
+    {
+      "_id": "665000000000000000000101",
+      "owner_id": "665000000000000000000002",
+      "store_name": "Com Tam Sai Gon 1990",
+      "merchant_name": "Tran Thi Chu Quan",
+      "address": "123 Nguyen Van Cu, Quan 5, TP.HCM",
+      "license_image": "/uploads/licenses/com-tam-1990-license.jpg",
+      "hygiene_image": "/uploads/licenses/com-tam-1990-hygiene.jpg",
+      "status": "approved"
+    }
+  ],
+  "menus": [
+    {
+      "_id": "665000000000000000000201",
+      "store_id": "665000000000000000000101",
+      "items": [
+        {
+          "_id": "665000000000000000000301",
+          "name": "Com tam suon bi cha",
+          "image": "/uploads/foods/com-tam-suon-bi-cha.jpg",
+          "price": 55000,
+          "category": "Com",
+          "is_available": true
+        },
+        {
+          "_id": "665000000000000000000302",
+          "name": "Bun thit nuong",
+          "image": "/uploads/foods/bun-thit-nuong.jpg",
+          "price": 48000,
+          "category": "Bun",
+          "is_available": true
+        },
+        {
+          "_id": "665000000000000000000303",
+          "name": "Tra tac mat ong",
+          "image": "/uploads/foods/tra-tac-mat-ong.jpg",
+          "price": 18000,
+          "category": "Do uong",
+          "is_available": false
+        }
+      ]
+    }
+  ],
+  "orders": [
+    {
+      "_id": "665000000000000000000401",
+      "store_id": "665000000000000000000101",
+      "creator_id": "665000000000000000000001",
+      "order_type": "single",
+      "members": [],
+      "items": [
+        {
+          "item_id": "665000000000000000000301",
+          "name": "Com tam suon bi cha",
+          "quantity": 2,
+          "price": 55000,
+          "buyer_id": "665000000000000000000001"
+        },
+        {
+          "item_id": "665000000000000000000303",
+          "name": "Tra tac mat ong",
+          "quantity": 1,
+          "price": 18000,
+          "buyer_id": "665000000000000000000001"
+        }
+      ],
+      "shipping_address": "25 Nguyen Trai, Quan 1, TP.HCM",
+      "distance_km": 4,
+      "shipping_fee": 20000,
+      "subtotal": 128000,
+      "total_price": 148000,
+      "payment_method": "COD",
+      "status": "completed",
+      "note": "It com, them nuoc mam"
+    },
+    {
+      "_id": "665000000000000000000402",
+      "store_id": "665000000000000000000101",
+      "creator_id": "665000000000000000000001",
+      "order_type": "group",
+      "members": ["665000000000000000000004"],
+      "items": [
+        {
+          "item_id": "665000000000000000000302",
+          "name": "Bun thit nuong",
+          "quantity": 1,
+          "price": 48000,
+          "buyer_id": "665000000000000000000001"
+        },
+        {
+          "item_id": "665000000000000000000301",
+          "name": "Com tam suon bi cha",
+          "quantity": 1,
+          "price": 55000,
+          "buyer_id": "665000000000000000000004"
+        }
+      ],
+      "shipping_address": "KTX Khu B, Di An, Binh Duong",
+      "distance_km": 12,
+      "shipping_fee": 60000,
+      "subtotal": 103000,
+      "total_price": 163000,
+      "payment_method": "wallet",
+      "status": "preparing",
+      "note": "Don nhom, goi truoc khi giao"
+    }
+  ],
+  "reviews": [
+    {
+      "_id": "665000000000000000000501",
+      "order_id": "665000000000000000000401",
+      "customer_id": "665000000000000000000001",
+      "store_id": "665000000000000000000101",
+      "rating": 5,
+      "comment": "Mon an ngon, giao dung gio.",
+      "reply_from_store": "Cam on ban da ung ho cua hang."
+    }
+  ],
+  "posts": [
+    {
+      "_id": "665000000000000000000601",
+      "author_id": "665000000000000000000002",
+      "content": "Hom nay Com Tam Sai Gon 1990 co combo com tam va tra tac gia uu dai.",
+      "images": ["/uploads/posts/combo-com-tam.jpg"],
+      "videos": [],
+      "reacts": ["665000000000000000000001"],
+      "Comments": [
+        {
+          "user_id": "665000000000000000000001",
+          "content": "Combo nay con ap dung buoi toi khong?"
+        }
+      ]
+    }
+  ],
+  "notifications": [
+    {
+      "_id": "665000000000000000000701",
+      "user_id": "665000000000000000000001",
+      "title": "Don hang da hoan thanh",
+      "message": "Don hang #665000000000000000000401 da giao thanh cong.",
+      "type": "order_status",
+      "is_read": false
+    },
+    {
+      "_id": "665000000000000000000702",
+      "user_id": "665000000000000000000001",
+      "title": "Uu dai mon yeu thich",
+      "message": "Com tam suon bi cha dang co combo tiet kiem trong hom nay.",
+      "type": "discount",
+      "is_read": false
+    }
+  ],
+  "accountLogs": [
+    {
+      "_id": "665000000000000000000801",
+      "user_id": "665000000000000000000004",
+      "action_type": "ban",
+      "reason": "Demo nhat ky khoa tai khoan theo BM3/QD4",
+      "duration_days": 3,
+      "performed_by": "ADMIN_PANEL"
+    }
+  ]
+}
