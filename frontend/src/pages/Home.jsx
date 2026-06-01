@@ -93,9 +93,8 @@ const Home = () => {
 
   // Online Friends List
   const onlineFriends = [
-    { id: 'friend1', name: 'Đỗ Duy Quang', avatar: '👦', role: 'customer', email: 'quang@gmail.com' },
-    { id: 'friend2', name: 'Nguyễn Đức Huy', avatar: '👦', role: 'customer', email: 'huy@gmail.com' },
-    { id: 'friend3', name: 'Lê Quỳnh Anh', avatar: '👩', role: 'customer', email: 'quynhanh@gmail.com' }
+    { id: 'driver_default_1', _id: 'driver_default_1', name: 'Shipper Nguyễn Văn Hùng', avatar: '🛵', role: 'driver', isVirtual: true },
+    { id: 'store_default_1', _id: 'store_default_1', name: 'TasteByte Customer Support', avatar: '🟢', role: 'merchant', isVirtual: true }
   ];
 
   // Fetch real food data from API
