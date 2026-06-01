@@ -18,7 +18,7 @@ exports.sendMessage = async (req, res) => {
     let isAllowed = false;
 
     // 1. Cho phép nhắn với các tài khoản giả lập/hỗ trợ hệ thống (Không lưu vào DB do là liên hệ ảo)
-    if (receiver_id === 'driver_default_1' || receiver_id === 'store_default_1') {
+    if (receiver_id === 'system_default_1' || receiver_id === 'driver_default_1' || receiver_id === 'store_default_1') {
       return res.status(201).json({
         status: 'success',
         data: {
@@ -206,6 +206,14 @@ exports.getChatUsers = async (req, res) => {
     }
 
     // 3. Thêm các liên hệ giả lập ảo (Virtual contacts)
+    const systemContact = {
+      _id: 'system_default_1',
+      full_name: '🛡️ Hệ thống TasteByte',
+      email: 'system@tastebyte.vn',
+      role: 'system',
+      isVirtual: true
+    };
+
     const virtualContacts = [
       {
         _id: 'driver_default_1',
@@ -225,7 +233,7 @@ exports.getChatUsers = async (req, res) => {
 
     res.status(200).json({
       status: 'success',
-      data: [...users, ...virtualContacts]
+      data: [systemContact, ...users, ...virtualContacts]
     });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });

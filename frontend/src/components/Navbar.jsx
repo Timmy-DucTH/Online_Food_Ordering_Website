@@ -147,6 +147,14 @@ const Navbar = ({
     window.location.href = '/'; 
   };
 
+  const handleSupportClick = () => {
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    navigate('/home', { state: { tab: 'chat', selectContactId: 'system_default_1' } });
+  };
+
   // Hàm đảo ngược trạng thái checkbox (Tích chọn / Bỏ tích) của một món ăn
   const handleToggleSelect = (id, e) => {
     e.stopPropagation(); 
@@ -372,7 +380,7 @@ const Navbar = ({
           ) : (
             <span style={{ cursor: 'pointer' }} onClick={openPendingModal}>🔔 Thông Báo</span>
           )}
-          <span style={{ cursor: 'pointer' }} onClick={openPendingModal}>❓ Hỗ Trợ</span>
+          <span style={{ cursor: 'pointer' }} onClick={handleSupportClick}>❓ Hỗ Trợ</span>
           
           {!isLoggedIn ? (
             <div style={{ display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>

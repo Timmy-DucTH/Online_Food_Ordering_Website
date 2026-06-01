@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FoodCard from '../components/FoodCard';
 
@@ -7,6 +7,7 @@ const CATEGORIES = ['Tất cả', 'Burger', 'Pizza', 'Cơm', 'Món nước', 'Tr
 
 const Home = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [cart, setCart] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [foods, setFoods] = useState([]);
@@ -38,8 +39,10 @@ const Home = () => {
   const [selectedContact, setSelectedContact] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState('');
-  // For virtual contacts simulation
   const [virtualMessages, setVirtualMessages] = useState({
+    'system_default_1': [
+      { sender_id: 'system_default_1', receiver_id: 'me', content: 'Xin chào! Đây là kênh Hỗ trợ & Phản hồi tự động của Hệ thống TasteByte. Hãy để lại tin nhắn nếu bạn cần trợ giúp nhé!', createdAt: new Date(Date.now() - 1800000).toISOString() }
+    ],
     'driver_default_1': [
       { sender_id: 'driver_default_1', receiver_id: 'me', content: 'Chào bạn, mình là shipper Hùng, lát nữa giao đồ ăn mình sẽ gọi điện nhé!', createdAt: new Date(Date.now() - 3600000).toISOString() }
     ],
@@ -135,6 +138,31 @@ const Home = () => {
       .catch(err => console.error('Error loading profile:', err));
     }
   }, [isLoggedIn]);
+
+  // Handle redirect/state passing from other pages (e.g. Navbar support click)
+  useEffect(() => {
+    if (location.state && location.state.tab) {
+      setActiveTab(location.state.tab);
+      const selectContactId = location.state.selectContactId;
+      if (selectContactId) {
+        if (selectContactId === 'system_default_1') {
+          const systemContact = {
+            _id: 'system_default_1',
+            full_name: '🛡️ Hệ thống TasteByte',
+            email: 'system@tastebyte.vn',
+            role: 'system',
+            isVirtual: true
+          };
+          setSelectedContact(systemContact);
+          setChatMessages(virtualMessages['system_default_1'] || [
+            { sender_id: 'system_default_1', receiver_id: 'me', content: 'Xin chào! Đây là kênh Hỗ trợ & Phản hồi tự động của Hệ thống TasteByte. Hãy để lại tin nhắn nếu bạn cần trợ giúp nhé!', createdAt: new Date().toISOString() }
+          ]);
+        }
+      }
+      // Clear location state to prevent running on every render/reload
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, navigate]);
 
   // Load feed posts
   const loadPosts = async () => {
@@ -433,17 +461,26 @@ const Home = () => {
           ...prev,
           [selectedContact._id]: [...(prev[selectedContact._id] || []), myMsg]
         };
-        // Update current log view as well
         setChatMessages(updated[selectedContact._id]);
         return updated;
       });
 
-      // Bot smart auto reply delay
+      // Simulate bot reply
       setTimeout(() => {
-        let botReply = 'Cảm ơn bạn đã liên hệ với tôi!';
         const query = text.toLowerCase();
+        let botReply = '';
 
-        if (selectedContact._id === 'driver_default_1') {
+        if (selectedContact._id === 'system_default_1') {
+          if (query.includes('đơn hàng') || query.includes('mua') || query.includes('món')) {
+            botReply = 'Hệ thống đã nhận thông tin. Để kiểm tra chi tiết đơn hàng hoặc yêu cầu chỉnh sửa, bạn hãy nhắn tin trực tiếp với Cửa hàng hoặc Shipper giao hàng nhé!';
+          } else if (query.includes('chào') || query.includes('hello') || query.includes('hi')) {
+            botReply = 'Xin chào! Tôi là Trợ lý Hệ thống tự động của TasteByte. Rất hân hạnh được hỗ trợ bạn. Bạn có câu hỏi gì cần hỗ trợ không?';
+          } else if (query.includes('lỗi') || query.includes('hỏng') || query.includes('không được')) {
+            botReply = 'Chúng tôi rất tiếc vì sự cố bạn gặp phải. Kỹ thuật viên hệ thống đã nhận thông báo lỗi và đang khắc phục. Xin vui lòng đợi trong giây lát!';
+          } else {
+            botReply = 'Cảm ơn bạn đã phản hồi tới Hệ thống TasteByte. Yêu cầu của bạn đã được lưu lại và chuyển tiếp đến bộ phận CSKH để xử lý sớm nhất.';
+          }
+        } else if (selectedContact._id === 'driver_default_1') {
           if (query.includes('đồ ăn') || query.includes('khi nào') || query.includes('bao lâu')) {
             botReply = 'Mình đang nhận hàng tại quán rồi nhé, tầm 5 - 10 phút nữa mình giao qua liền nha!';
           } else if (query.includes('tương ớt') || query.includes('nhiều tương')) {
