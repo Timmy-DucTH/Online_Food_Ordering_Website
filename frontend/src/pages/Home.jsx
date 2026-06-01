@@ -1,9 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FoodCard from '../components/FoodCard';
 
 const CATEGORIES = ['Tất cả', 'Burger', 'Pizza', 'Cơm', 'Mì & Phở', 'Đồ uống', 'Tráng miệng', 'Khác'];
+const initialVirtualMessages = {
+  'driver_default_1': [
+    { sender_id: 'driver_default_1', receiver_id: 'me', content: 'Chào bạn, mình là shipper Hùng, lát nữa giao đồ ăn mình sẽ gọi điện nhé!', createdAt: new Date(Date.now() - 3600000).toISOString() }
+  ],
+  'store_default_1': [
+    { sender_id: 'store_default_1', receiver_id: 'me', content: 'Kính chào quý khách! TasteByte Support sẵn sàng hỗ trợ giải đáp mọi thắc mắc của bạn.', createdAt: new Date(Date.now() - 7200000).toISOString() }
+  ]
+};
 
 const Home = () => {
   const navigate = useNavigate();
@@ -39,14 +47,7 @@ const Home = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState('');
   // For virtual contacts simulation
-  const [virtualMessages, setVirtualMessages] = useState({
-    'driver_default_1': [
-      { sender_id: 'driver_default_1', receiver_id: 'me', content: 'Chào bạn, mình là shipper Hùng, lát nữa giao đồ ăn mình sẽ gọi điện nhé!', createdAt: new Date(Date.now() - 3600000).toISOString() }
-    ],
-    'store_default_1': [
-      { sender_id: 'store_default_1', receiver_id: 'me', content: 'Kính chào quý khách! TasteByte Support sẵn sàng hỗ trợ giải đáp mọi thắc mắc của bạn.', createdAt: new Date(Date.now() - 7200000).toISOString() }
-    ]
-  });
+  const [virtualMessages, setVirtualMessages] = useState(initialVirtualMessages);
 
   // Communities States
   const [activeCommunity, setActiveCommunity] = useState(null);
@@ -110,7 +111,7 @@ const Home = () => {
         } else {
           setError('Không thể tải danh sách món ăn.');
         }
-      } catch (err) {
+      } catch {
         setError('Lỗi kết nối máy chủ.');
       } finally {
         setLoading(false);
@@ -138,7 +139,7 @@ const Home = () => {
   }, [isLoggedIn]);
 
   // Load feed posts
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     try {
       const res = await fetch('/api/posts');
       const data = await res.json();
@@ -148,10 +149,10 @@ const Home = () => {
     } catch (e) {
       console.error('Error fetching posts:', e);
     }
-  };
+  }, []);
 
   // Fetch notifications
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     if (!isLoggedIn) return;
     try {
       const res = await fetch('/api/notifications', {
@@ -166,11 +167,12 @@ const Home = () => {
     } catch (e) {
       console.error('Error fetching notifications:', e);
     }
-  };
+  }, [isLoggedIn]);
 
   // Sync social details on tab switch
   useEffect(() => {
     if (activeTab === 'feed') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadPosts();
     } else if (activeTab === 'notifications') {
       loadNotifications();
@@ -189,16 +191,17 @@ const Home = () => {
       })
       .catch(err => console.error('Error fetching contacts:', err));
     }
-  }, [activeTab]);
+  }, [activeTab, loadPosts, loadNotifications]);
 
   // Periodic notifications check
   useEffect(() => {
     if (isLoggedIn) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadNotifications();
       const interval = setInterval(loadNotifications, 10000);
       return () => clearInterval(interval);
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, loadNotifications]);
 
   // Compute unread notifications count
   const unreadCount = notifications.filter(n => !n.is_read).length;

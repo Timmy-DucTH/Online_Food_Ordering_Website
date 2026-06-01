@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api'; 
 
@@ -60,17 +60,10 @@ const AdminDashboard = () => {
   });
   
   const [selectedRevenueDate, setSelectedRevenueDate] = useState(null);
-  const [dateError, setDateError] = useState('');
   const [hoveredBarIndex, setHoveredBarIndex] = useState(null);
 
-  // Reset selectedDate nếu range ngày đổi
-  useEffect(() => {
-    setSelectedRevenueDate(null);
-  }, [statsStartDate, statsEndDate]);
-
   // Kiểm tra ràng buộc ngày (Date range validation)
-  useEffect(() => {
-    setDateError('');
+  const dateError = useMemo(() => {
     if (!statsStartDate || !statsEndDate) return;
     
     const start = new Date(statsStartDate);
@@ -79,15 +72,15 @@ const AdminDashboard = () => {
     end.setHours(0,0,0,0);
     
     if (start > end) {
-      setDateError('Ngày bắt đầu phải trước hoặc trùng ngày kết thúc!');
-      return;
+      return 'Ngày bắt đầu phải trước hoặc trùng ngày kết thúc!';
     }
     
     const diffTime = Math.abs(end - start);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
     if (diffDays > 31) {
-      setDateError('Khoảng cách thống kê không được vượt quá 31 ngày (1 tháng)!');
+      return 'Khoảng cách thống kê không được vượt quá 31 ngày (1 tháng)!';
     }
+    return '';
   }, [statsStartDate, statsEndDate]);
 
   const formatDateKey = (dateObj) => {
@@ -414,7 +407,10 @@ const AdminDashboard = () => {
                     <input 
                       type="date" 
                       value={statsStartDate}
-                      onChange={(e) => setStatsStartDate(e.target.value)}
+                      onChange={(e) => {
+                        setStatsStartDate(e.target.value);
+                        setSelectedRevenueDate(null);
+                      }}
                       style={{ padding: '8px 12px', backgroundColor: '#0b0f19', color: '#ffffff', border: '1px solid #1f2937', borderRadius: '6px', fontSize: '13px', outline: 'none' }}
                     />
                   </div>
@@ -423,7 +419,10 @@ const AdminDashboard = () => {
                     <input 
                       type="date" 
                       value={statsEndDate}
-                      onChange={(e) => setStatsEndDate(e.target.value)}
+                      onChange={(e) => {
+                        setStatsEndDate(e.target.value);
+                        setSelectedRevenueDate(null);
+                      }}
                       style={{ padding: '8px 12px', backgroundColor: '#0b0f19', color: '#ffffff', border: '1px solid #1f2937', borderRadius: '6px', fontSize: '13px', outline: 'none' }}
                     />
                   </div>

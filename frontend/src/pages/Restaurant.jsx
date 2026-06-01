@@ -27,18 +27,12 @@ const Restaurant = () => {
   const [showErrModal, setShowErrModal] = useState(false);
   const [errModalMsg, setErrModalMsg] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmMsg, setConfirmMsg] = useState('');
-  const [confirmCallback, setConfirmCallback] = useState(null);
+  const [confirmMsg] = useState('');
+  const [confirmCallback] = useState(null);
 
   const showMerchantError = (msg) => {
     setErrModalMsg(msg);
     setShowErrModal(true);
-  };
-
-  const showMerchantConfirm = (msg, callback) => {
-    setConfirmMsg(msg);
-    setConfirmCallback(() => callback);
-    setShowConfirmModal(true);
   };
 
   // Date selections for Statistics
@@ -265,6 +259,7 @@ const Restaurant = () => {
         setSuccessMsg('🍔 Đăng ký món ăn thành công! Chờ Admin duyệt.');
         setFoods([res.data.data, ...foods]);
         setNewFood({ name: '', price: '', category: '', image: '', description: '' }); // Reset Form
+        setShowAddFoodModal(false);
       }
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Có lỗi xảy ra khi tạo món ăn!');
@@ -1003,21 +998,7 @@ const Restaurant = () => {
               </div>
             )}
 
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setErrorMsg('');
-              try {
-                const res = await API.post('/restaurants/foods', newFood);
-                if (res.data.status === 'success') {
-                  setSuccessMsg('🍔 Đăng ký món ăn thành công! Chờ Admin duyệt.');
-                  setFoods([res.data.data, ...foods]);
-                  setNewFood({ name: '', price: '', category: '', image: '', description: '' });
-                  setShowAddFoodModal(false);
-                }
-              } catch (err) {
-                setErrorMsg(err.response?.data?.message || 'Có lỗi xảy ra khi tạo món ăn!');
-              }
-            }} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <form onSubmit={handleAddFoodSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <input type="text" placeholder="Tên món ăn (Ví dụ: Cơm tấm sườn sụn)" value={newFood.name} onChange={(e) => setNewFood({ ...newFood, name: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} required />
               <input type="number" placeholder="Đơn giá bán lẻ (VNĐ)" value={newFood.price} onChange={(e) => setNewFood({ ...newFood, price: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} required />
               <select value={newFood.category} onChange={(e) => setNewFood({ ...newFood, category: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none', cursor: 'pointer' }} required>

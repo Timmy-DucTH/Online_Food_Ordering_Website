@@ -73,6 +73,7 @@ const Profile = () => {
   // 🌟 TẢI LỊCH SỬ ĐƠN HÀNG KHI CHUYỂN SANG TAB ORDERS
   useEffect(() => {
     if (currentTab === 'orders') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOrdersLoading(true);
       getMyOrdersAPI()
         .then(res => {

@@ -11,7 +11,7 @@ const Navbar = ({ cart = [], updateQuantity, removeFromCart, clearCart, openPend
   
   // Trạng thái hiển thị Custom Modal thanh toán tự chế
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [checkoutTotal, setCheckoutTotal] = useState(0);
+  const [checkoutTotal] = useState(0);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
