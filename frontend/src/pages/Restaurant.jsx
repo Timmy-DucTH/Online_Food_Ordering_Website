@@ -20,6 +20,8 @@ const Restaurant = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [showAddFoodModal, setShowAddFoodModal] = useState(false);
   const [merchantCreditScore, setMerchantCreditScore] = useState(100);
+  const [restaurantReviews, setRestaurantReviews] = useState([]);
+  const [reviewReplyTexts, setReviewReplyTexts] = useState({});
 
   // States quản lý modal thông báo lỗi và xác nhận nguy hiểm
   const [showErrModal, setShowErrModal] = useState(false);
@@ -100,6 +102,14 @@ const Restaurant = () => {
               }
             } catch (orderErr) {
               console.error("Lỗi khi tải đơn hàng của cửa hàng:", orderErr);
+            }
+            try {
+              const revsRes = await API.get(`/reviews/restaurant/${restaurant._id}`);
+              if (revsRes.data.status === 'success') {
+                setRestaurantReviews(revsRes.data.data || []);
+              }
+            } catch (revErr) {
+              console.error("Lỗi khi tải đánh giá của cửa hàng:", revErr);
             }
           }
         } else {
@@ -277,6 +287,21 @@ const Restaurant = () => {
     }
   };
 
+  const handleSendReviewReply = async (reviewId) => {
+    const text = reviewReplyTexts[reviewId];
+    if (!text || !text.trim()) return;
+    try {
+      const res = await API.patch(`/reviews/${reviewId}/reply`, { reply_from_store: text });
+      if (res.data.status === 'success') {
+        setSuccessMsg('✓ Đã phản hồi đánh giá khách hàng thành công!');
+        setRestaurantReviews(prev => prev.map(r => r._id === reviewId ? res.data.data : r));
+        setReviewReplyTexts(prev => ({ ...prev, [reviewId]: '' }));
+      }
+    } catch (err) {
+      showMerchantError(err.response?.data?.message || 'Gửi phản hồi thất bại!');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.clear();
     navigate('/login');
@@ -415,6 +440,9 @@ const Restaurant = () => {
                 </button>
                 <button onClick={() => setActiveTab('orders')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'orders' ? '#10b981' : 'transparent', color: activeTab === 'orders' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
                   📦 Quản Lý Đơn Hàng
+                </button>
+                <button onClick={() => setActiveTab('reviews')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'reviews' ? '#10b981' : 'transparent', color: activeTab === 'reviews' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
+                  💬 Phản Hồi Đánh Giá
                 </button>
                 <button onClick={() => setActiveTab('profile')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'profile' ? '#10b981' : 'transparent', color: activeTab === 'profile' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
                   ⚙️ Hồ Sơ Cửa Hàng
@@ -744,6 +772,67 @@ const Restaurant = () => {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {/* ================= TAB 6: PHẢN HỒI ĐÁNH GIÁ (Nghiệp vụ 11) ================= */}
+            {activeTab === 'reviews' && (
+              <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                <h3 style={{ margin: '0 0 6px 0', color: '#ffffff', fontWeight: '700', fontSize: '18px' }}>💬 Phản hồi đánh giá của khách hàng</h3>
+                <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '25px' }}>Xem các nhận xét từ khách hàng sau khi nhận đồ ăn và gửi phản hồi của nhà hàng.</p>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {restaurantReviews.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                      Chưa có đánh giá nào từ khách hàng dành cho quán của bạn.
+                    </div>
+                  ) : (
+                    restaurantReviews.map((rev) => (
+                      <div key={rev._id} style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '8px', padding: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+                          <div>
+                            <strong style={{ fontSize: '14px', color: '#f8fafc' }}>
+                              {rev.customer_id?.full_name || 'Khách Hàng Ẩn Danh'}
+                            </strong>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>{rev.customer_id?.email}</div>
+                          </div>
+                          <div style={{ color: '#fbbf24', fontSize: '16px', fontWeight: 'bold' }}>
+                            {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                            <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '6px' }}>({rev.rating}/5 sao)</span>
+                          </div>
+                        </div>
+                        
+                        <p style={{ fontSize: '13px', color: '#cbd5e1', lineHeight: '1.5', margin: '0 0 14px 0' }}>
+                          {rev.comment || 'Khách hàng không để lại bình luận.'}
+                        </p>
+
+                        {/* Existing Store Response */}
+                        {rev.reply_from_store ? (
+                          <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', borderLeft: '3px solid #10b981', padding: '12px', borderRadius: '4px', fontSize: '13px', color: '#10b981' }}>
+                            <strong>🏪 Phản hồi từ quán:</strong> {rev.reply_from_store}
+                          </div>
+                        ) : (
+                          // Send Reply Form
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                            <input
+                              type="text"
+                              placeholder="Nhập nội dung phản hồi đánh giá..."
+                              value={reviewReplyTexts[rev._id] || ''}
+                              onChange={(e) => setReviewReplyTexts({ ...reviewReplyTexts, [rev._id]: e.target.value })}
+                              style={{ flex: 1, padding: '8px 12px', backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '6px', color: '#ffffff', fontSize: '13px', outline: 'none' }}
+                            />
+                            <button
+                              onClick={() => handleSendReviewReply(rev._id)}
+                              style={{ padding: '8px 18px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                              Gửi Phản Hồi
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}

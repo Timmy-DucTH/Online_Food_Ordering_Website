@@ -58,12 +58,16 @@ exports.createOrder = async (req, res) => {
       if (!mongoose.Types.ObjectId.isValid(itemId)) {
         itemId = new mongoose.Types.ObjectId(); // Tự sinh ObjectId hợp lệ cho món ăn mock
       }
+      let buyerId = item.buyer_id;
+      if (!buyerId || !mongoose.Types.ObjectId.isValid(buyerId)) {
+        buyerId = finalCreatorId;
+      }
       return {
         item_id: itemId,
         name: item.name,
         quantity: item.quantity || 1,
         price: item.price || 0,
-        buyer_id: finalCreatorId
+        buyer_id: buyerId
       };
     });
 

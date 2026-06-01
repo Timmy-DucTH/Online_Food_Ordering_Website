@@ -62,3 +62,38 @@ exports.getReviewsByRestaurant = async (req, res) => {
     res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
   }
 };
+
+// 3. Chủ quán phản hồi đánh giá của khách hàng (Nghiệp vụ 11)
+exports.replyToReview = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { reply_from_store } = req.body;
+
+    if (!reply_from_store || !reply_from_store.trim()) {
+      return res.status(400).json({ status: 'fail', message: 'Nội dung phản hồi không được để trống!' });
+    }
+
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đánh giá nào!' });
+    }
+
+    // Kiểm tra quyền sở hữu cửa hàng
+    const Restaurant = require('../models/restaurant');
+    const restaurant = await Restaurant.findById(review.store_id);
+    if (!restaurant || restaurant.owner_id.toString() !== req.user.id) {
+      return res.status(403).json({ status: 'fail', message: 'Từ chối truy cập! Bạn không có quyền phản hồi đánh giá này.' });
+    }
+
+    review.reply_from_store = reply_from_store.trim();
+    await review.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: '✓ Phản hồi đánh giá thành công!',
+      data: review
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'Lỗi máy chủ', error: error.message });
+  }
+};

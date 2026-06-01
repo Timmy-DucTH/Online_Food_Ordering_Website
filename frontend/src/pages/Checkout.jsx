@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createOrderAPI } from '../services/api';
 
+const MOCK_FRIENDS = [
+  { id: '65bf80010000000000000001', name: 'Đỗ Duy Quang (Bạn)' },
+  { id: '65bf80010000000000000002', name: 'Nguyễn Đức Huy (Bạn)' },
+  { id: '65bf80010000000000000003', name: 'Lê Quỳnh Anh (Bạn)' }
+];
+
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -21,6 +27,11 @@ const Checkout = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // --- STATE ĐẶT HÀNG NHÓM (GROUP ORDER) ---
+  const [orderType, setOrderType] = useState('single'); // single hoặc group
+  const [selectedFriends, setSelectedFriends] = useState([]); // Array of ObjectIds
+  const [paymentSplit, setPaymentSplit] = useState('equal'); // equal (chia đều) hoặc individual (tự trả)
+
   // ==========================================
   // STATE QUẢN LÝ MODAL THÔNG BÁO LỖI GIỮA MÀN HÌNH
   // ==========================================
@@ -34,12 +45,84 @@ const Checkout = () => {
 
   // --- TÍNH TOÁN HÓA ĐƠN ---
   const totalMoney = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shippingFee = totalMoney > 0 ? 15000 : 0; // Phí ship cố định 15k
+  const shippingFee = totalMoney > 0 ? 15000 : 0; // Phí ship 15k
   const finalTotal = totalMoney + shippingFee;
+
+  // --- PHÂN BỔ TIỀN THANH TOÁN (BM6) ---
+  const totalPeople = selectedFriends.length + 1; // Nhóm + Trưởng nhóm
+  const splitShipFee = shippingFee / totalPeople;
+
+  const paymentAllocationList = [];
+  if (orderType === 'group') {
+    if (paymentSplit === 'equal') {
+      const equalShare = finalTotal / totalPeople;
+      // Trưởng nhóm
+      paymentAllocationList.push({
+        name: 'Bạn (Trưởng nhóm)',
+        itemsCost: totalMoney / totalPeople,
+        shipCost: splitShipFee,
+        totalPay: equalShare
+      });
+      // Thành viên
+      selectedFriends.forEach(friendId => {
+        const friend = MOCK_FRIENDS.find(f => f.id === friendId);
+        paymentAllocationList.push({
+          name: friend ? friend.name : 'Thành viên',
+          itemsCost: totalMoney / totalPeople,
+          shipCost: splitShipFee,
+          totalPay: equalShare
+        });
+      });
+    } else {
+      // Phân bổ tự trả theo món (phân chia món ăn xoay vòng hoặc phân tách)
+      // Mặc định phân bổ: Món 1 cho Trưởng nhóm, Món 2 cho Bạn 1, Món 3 cho Bạn 2, xoay vòng
+      const allocationMap = { me: 0 };
+      selectedFriends.forEach(fid => { allocationMap[fid] = 0; });
+
+      selectedItems.forEach((item, index) => {
+        const personKey = index === 0 ? 'me' : selectedFriends[(index - 1) % selectedFriends.length] || 'me';
+        allocationMap[personKey] += item.price * item.quantity;
+      });
+
+      // Trưởng nhóm
+      paymentAllocationList.push({
+        name: 'Bạn (Trưởng nhóm)',
+        itemsCost: allocationMap['me'],
+        shipCost: splitShipFee,
+        totalPay: allocationMap['me'] + splitShipFee
+      });
+      // Thành viên
+      selectedFriends.forEach(friendId => {
+        const friend = MOCK_FRIENDS.find(f => f.id === friendId);
+        const cost = allocationMap[friendId] || 0;
+        paymentAllocationList.push({
+          name: friend ? friend.name : 'Thành viên',
+          itemsCost: cost,
+          shipCost: splitShipFee,
+          totalPay: cost + splitShipFee
+        });
+      });
+    }
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setShippingInfo(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleToggleFriend = (friendId) => {
+    setSelectedFriends(prev => {
+      if (prev.includes(friendId)) {
+        return prev.filter(id => id !== friendId);
+      } else {
+        // Giới hạn 20 người bao gồm cả chủ nhóm (QĐ8) => Tối đa 19 bạn bè
+        if (prev.length >= 19) {
+          showError('Quy định hệ thống: Đơn đặt hàng theo nhóm không vượt quá 20 thành viên!');
+          return prev;
+        }
+        return [...prev, friendId];
+      }
+    });
   };
 
   const handlePlaceOrder = async (e) => {
@@ -51,11 +134,25 @@ const Checkout = () => {
     
     setLoading(true);
     try {
+      // Chuẩn hóa item để đính kèm buyer_id đúng đắn nếu là đơn hàng nhóm
+      const processedItems = selectedItems.map((item, index) => {
+        let buyerId = 'me'; // Default
+        if (orderType === 'group' && selectedFriends.length > 0) {
+          buyerId = index === 0 ? 'me' : selectedFriends[(index - 1) % selectedFriends.length] || 'me';
+        }
+        return {
+          ...item,
+          buyer_id: buyerId === 'me' ? undefined : buyerId // backend will auto-assign creator_id if buyer_id is not custom ObjectId
+        };
+      });
+
       const orderPayload = {
         shipping_address: shippingInfo.address,
         payment_method: paymentMethod,
-        items: selectedItems,
-        note: shippingInfo.note
+        items: processedItems,
+        note: shippingInfo.note,
+        order_type: orderType,
+        members: orderType === 'group' ? selectedFriends : []
       };
       
       const res = await createOrderAPI(orderPayload);
@@ -71,11 +168,9 @@ const Checkout = () => {
 
   const handleCloseSuccess = () => {
     setShowSuccessModal(false);
-    // Điều hướng về Home. Navbar sẽ tự động xử lý xóa các món đã mua dựa trên logic gốc
     navigate('/home'); 
   };
 
-  // Nếu không có món nào được chọn mà cố tình vào trang này, đẩy về Home
   if (selectedItems.length === 0) {
     return (
       <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#94a3b8', padding: '20px' }}>
@@ -88,7 +183,7 @@ const Checkout = () => {
   }
 
   return (
-    <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', padding: '30px 10px', color: '#f8fafc' }}>
+    <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', padding: '30px 10px', color: '#f8fafc', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
         
         {/* TIÊU ĐỀ TRANG */}
@@ -102,6 +197,116 @@ const Checkout = () => {
           {/* CỘT TRÁI: THÔNG TIN GIAO HÀNG & PHƯƠNG THỨC */}
           <div style={{ flex: '1.3', minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
+            {/* 1. CHỌN LOẠI ĐƠN HÀNG (CÁ NHÂN HOẶC NHÓM) */}
+            <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '8px', border: '1px solid #1f2937', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#00e676', borderBottom: '2px solid #10b981', paddingBottom: '8px', fontWeight: '700' }}>
+                👥 Loại Đơn Hàng (Nghiệp vụ 9)
+              </h3>
+              <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+                <button
+                  onClick={() => setOrderType('single')}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                    backgroundColor: orderType === 'single' ? '#10b981' : '#1f2937',
+                    color: orderType === 'single' ? '#fff' : '#94a3b8',
+                    border: '1.5px solid ' + (orderType === 'single' ? '#10b981' : '#374151'),
+                    transition: '0.2s'
+                  }}
+                >
+                  🍔 Đơn hàng cá nhân
+                </button>
+                <button
+                  onClick={() => setOrderType('group')}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                    backgroundColor: orderType === 'group' ? '#10b981' : '#1f2937',
+                    color: orderType === 'group' ? '#fff' : '#94a3b8',
+                    border: '1.5px solid ' + (orderType === 'group' ? '#10b981' : '#374151'),
+                    transition: '0.2s'
+                  }}
+                >
+                  🧑‍🤝‍🧑 Đặt hàng nhóm (Group Order)
+                </button>
+              </div>
+
+              {/* Giao diện cài đặt Đặt hàng nhóm */}
+              {orderType === 'group' && (
+                <div style={{ marginTop: '20px', backgroundColor: '#0b0f19', padding: '20px', borderRadius: '8px', border: '1px solid #1f2937' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#00e676', display: 'block', marginBottom: '10px' }}>Chọn bạn bè đặt chung (QĐ 8: Tối đa 20 người):</label>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                    {MOCK_FRIENDS.map(friend => {
+                      const isChecked = selectedFriends.includes(friend.id);
+                      return (
+                        <label key={friend.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#e2e8f0', cursor: 'pointer', fontSize: '14px' }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleFriend(friend.id)}
+                            style={{ accentColor: '#00e676', width: '16px', height: '16px', cursor: 'pointer' }}
+                          />
+                          {friend.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  {selectedFriends.length > 0 && (
+                    <>
+                      <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#00e676', display: 'block', marginBottom: '10px' }}>Chọn phương thức phân bổ thanh toán:</label>
+                      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSplit('equal')}
+                          style={{
+                            flex: 1, padding: '8px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                            backgroundColor: paymentSplit === 'equal' ? 'rgba(0, 230, 118, 0.1)' : 'transparent',
+                            color: paymentSplit === 'equal' ? '#00e676' : '#94a3b8',
+                            border: '1px solid ' + (paymentSplit === 'equal' ? '#00e676' : '#374151'),
+                            transition: '0.2s'
+                          }}
+                        >
+                          Chia đều hóa đơn ⚖️
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSplit('individual')}
+                          style={{
+                            flex: 1, padding: '8px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                            backgroundColor: paymentSplit === 'individual' ? 'rgba(0, 230, 118, 0.1)' : 'transparent',
+                            color: paymentSplit === 'individual' ? '#00e676' : '#94a3b8',
+                            border: '1px solid ' + (paymentSplit === 'individual' ? '#00e676' : '#374151'),
+                            transition: '0.2s'
+                          }}
+                        >
+                          Tự trả theo món ăn 🍽️
+                        </button>
+                      </div>
+
+                      {/* Bảng phân bổ chi tiết */}
+                      <div style={{ borderTop: '1px solid #1f2937', paddingTop: '15px' }}>
+                        <h4 style={{ color: '#ffffff', fontSize: '13px', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>BẢNG PHÂN BỔ TIỀN THANH TOÁN (BM 6)</h4>
+                        
+                        <div style={{ backgroundColor: '#111827', borderRadius: '6px', padding: '12px', border: '1px solid #1f2937' }}>
+                          {paymentAllocationList.map((alloc, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0', borderBottom: i < paymentAllocationList.length - 1 ? '1px dashed #1f2937' : 'none' }}>
+                              <span style={{ color: '#cbd5e1' }}>{alloc.name}</span>
+                              <span style={{ fontWeight: 'bold', color: '#00e676' }}>
+                                {Math.round(alloc.totalPay).toLocaleString()}đ 
+                                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 'normal', marginLeft: '4px' }}>
+                                  ({Math.round(alloc.itemsCost).toLocaleString()}đ món + {Math.round(alloc.shipCost).toLocaleString()}đ ship)
+                                </span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Form Địa Chỉ */}
             <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '8px', border: '1px solid #1f2937', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
               <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', color: '#00e676', borderBottom: '2px solid #10b981', paddingBottom: '8px', fontWeight: '700' }}>
@@ -220,7 +425,7 @@ const Checkout = () => {
       {/* ❌ MODAL THÔNG BÁO LỖI GIỮA TRANG */}
       {showErrModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
-          <div style={{ backgroundColor: '#111827', width: '420px', padding: '32px', borderRadius: '16px', border: '1px solid #ef444440', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)', boxSizing: 'border-box', animation: 'modalFadeIn 0.3s ease-out' }}>
+          <div style={{ backgroundColor: '#111827', width: '420px', padding: '32px', borderRadius: '16px', border: '1px solid #ef444440', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)', boxSizing: 'border-box' }}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚠️</div>
             <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#ef4444', fontWeight: '800' }}>Thông Báo</h4>
             <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.7', margin: '0 0 24px 0', fontWeight: '500' }}>
@@ -265,13 +470,6 @@ const Checkout = () => {
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes modalFadeIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 };
