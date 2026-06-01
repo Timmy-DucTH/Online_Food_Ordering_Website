@@ -12,28 +12,28 @@ const sampleFoodsPool = [
   // Cơm văn phòng
   {
     name: 'Cơm Tấm Sườn Bì Chả Đặc Biệt',
-    category: 'Cơm văn phòng',
+    category: 'Cơm',
     price: 45000,
     image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400',
     description: 'Cơm tấm dẻo thơm, sườn heo nướng mật ong vàng ruộm, bì thính heo ba chỉ, chả trứng hấp béo bùi kèm đồ chua giòn ngọt.'
   },
   {
     name: 'Cơm Gà Hải Nam Hoàng Gia',
-    category: 'Cơm văn phòng',
+    category: 'Cơm',
     price: 55000,
     image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=400',
     description: 'Cơm nấu nước luộc gà thơm dẻo béo ngậy, đùi gà ta luộc da giòn vàng ươm chấm kèm sốt gừng tỏi ớt gia truyền Sing.'
   },
   {
     name: 'Cơm Thăn Bò Né Bơ Tỏi',
-    category: 'Cơm văn phòng',
+    category: 'Cơm',
     price: 60000,
     image: 'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?q=80&w=400',
     description: 'Thịt thăn bò mềm tẩm ướp tiêu đen áp chảo thơm lừng bơ tỏi ăn kèm cơm trắng nóng hổi và xà lách dầu giấm ngon tuyệt.'
   },
   {
     name: 'Cơm Đùi Vịt Quay Sốt Tiêu Đen',
-    category: 'Cơm văn phòng',
+    category: 'Cơm',
     price: 65000,
     image: 'https://images.unsplash.com/photo-1514944224746-6bba5b09e5c2?q=80&w=400',
     description: 'Đùi vịt quay da giòn bóng bẩy, thịt vịt ngọt bùi hòa quyện nước sốt tiêu đen đậm đà kèm rau luộc theo mùa.'

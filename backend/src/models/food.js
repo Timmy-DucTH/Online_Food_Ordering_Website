@@ -19,7 +19,7 @@ FoodSchema.pre('save', function() {
     // Cấp 1: Đồ ăn (Food)
     'Burger': 'Đồ ăn',
     'Pizza': 'Đồ ăn',
-    'Cơm văn phòng': 'Đồ ăn',
+    'Cơm': 'Đồ ăn',
     'Món nước': 'Đồ ăn',
     'Tráng miệng': 'Đồ ăn',
     'Đồ ăn nhanh': 'Đồ ăn',

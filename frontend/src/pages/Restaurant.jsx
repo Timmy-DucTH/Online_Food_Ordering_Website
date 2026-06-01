@@ -1024,7 +1024,7 @@ const Restaurant = () => {
                 <option value="" style={{ backgroundColor: '#0b0f19' }}>-- Chọn danh mục món ăn --</option>
                 <option value="Burger" style={{ backgroundColor: '#0b0f19' }}>Burger</option>
                 <option value="Pizza" style={{ backgroundColor: '#0b0f19' }}>Pizza</option>
-                <option value="Cơm văn phòng" style={{ backgroundColor: '#0b0f19' }}>Cơm văn phòng</option>
+                <option value="Cơm" style={{ backgroundColor: '#0b0f19' }}>Cơm</option>
                 <option value="Món nước" style={{ backgroundColor: '#0b0f19' }}>Món nước</option>
                 <option value="Trà sữa" style={{ backgroundColor: '#0b0f19' }}>Trà sữa</option>
                 <option value="Cà phê" style={{ backgroundColor: '#0b0f19' }}>Cà phê</option>
