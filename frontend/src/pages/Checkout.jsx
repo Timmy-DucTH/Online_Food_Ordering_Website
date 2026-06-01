@@ -143,11 +143,19 @@ const Checkout = () => {
                   </div>
                 </label>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', border: paymentMethod === 'MOMO' ? '1px solid #10b981' : '1px solid #1f2937', borderRadius: '8px', backgroundColor: paymentMethod === 'MOMO' ? 'rgba(16,185,129,0.05)' : 'transparent', opacity: 0.5, cursor: 'not-allowed' }}>
-                  <input type="radio" name="payment" checked={paymentMethod === 'MOMO'} disabled style={{ width: '18px', height: '18px' }} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', border: paymentMethod === 'wallet' ? '1px solid #10b981' : '1px solid #1f2937', borderRadius: '8px', backgroundColor: paymentMethod === 'wallet' ? 'rgba(16,185,129,0.05)' : 'transparent', cursor: 'pointer' }}>
+                  <input type="radio" name="payment" checked={paymentMethod === 'wallet'} onChange={() => setPaymentMethod('wallet')} style={{ width: '18px', height: '18px', accentColor: '#00e676' }} />
                   <div>
-                    <strong style={{ display: 'block', fontSize: '14px', color: '#94a3b8' }}>Ví điện tử MoMo 🌟 (Bảo trì kết nối)</strong>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>Kết nối tài khoản hoặc quét mã QR thanh toán nhanh</span>
+                    <strong style={{ display: 'block', fontSize: '14px', color: '#e2e8f0' }}>Ví điện tử MoMo 🌟</strong>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Thanh toán qua Ví MoMo giả lập trực tuyến</span>
+                  </div>
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', border: paymentMethod === 'card' ? '1px solid #10b981' : '1px solid #1f2937', borderRadius: '8px', backgroundColor: paymentMethod === 'card' ? 'rgba(16,185,129,0.05)' : 'transparent', cursor: 'pointer' }}>
+                  <input type="radio" name="payment" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} style={{ width: '18px', height: '18px', accentColor: '#00e676' }} />
+                  <div>
+                    <strong style={{ display: 'block', fontSize: '14px', color: '#e2e8f0' }}>Thẻ tín dụng / Thẻ ghi nợ 💳</strong>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Hỗ trợ Visa, Mastercard, JCB thanh toán quốc tế</span>
                   </div>
                 </label>
               </div>
@@ -241,8 +249,12 @@ const Checkout = () => {
               <strong style={{ color: '#ffffff', display: 'block', marginTop: '5px' }}>{shippingInfo.address}</strong>
             </p>
             <div style={{ backgroundColor: '#0b0f19', padding: '12px', borderRadius: '6px', marginBottom: '25px', border: '1px solid #1f2937' }}>
-              <span style={{ fontSize: '13px', color: '#94a3b8' }}>Vui lòng chuẩn bị sẵn số tiền:</span>
-              <div style={{ fontSize: '22px', fontWeight: '800', color: '#00e676', marginTop: '3px' }}>{finalTotal.toLocaleString()}đ</div>
+              <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                {paymentMethod === 'COD' ? 'Vui lòng chuẩn bị sẵn số tiền mặt:' : 'Trạng thái thanh toán:'}
+              </span>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: '#00e676', marginTop: '3px' }}>
+                {paymentMethod === 'COD' ? `${finalTotal.toLocaleString()}đ` : 'Đã thanh toán trực tuyến ✓'}
+              </div>
             </div>
             <button 
               onClick={handleCloseSuccess}

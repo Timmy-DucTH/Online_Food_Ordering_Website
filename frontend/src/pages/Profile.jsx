@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 // 🌟 IMPORT HÀM API ĐỔI MẬT KHẨU & LỊCH SỬ ĐƠN HÀNG TỪ SERVICES
-import { changePasswordAPI, getMyOrdersAPI } from '../services/api';
+import { changePasswordAPI, getMyOrdersAPI, getProfileAPI } from '../services/api';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -17,15 +17,34 @@ const Profile = () => {
   const [orderStatusTab, setOrderStatusTab] = useState('all');
 
   // State thông tin người dùng
-  const [username] = useState(localStorage.getItem('userEmail')?.split('@')[0] || 'duyquang536');
+  const [username, setUsername] = useState(localStorage.getItem('userEmail')?.split('@')[0] || 'duyquang536');
   const [fullName, setFullName] = useState('Nguyễn Duy Quang');
-  const [email] = useState(localStorage.getItem('userEmail') || 'duyquang536@gmail.com');
+  const [email, setEmail] = useState(localStorage.getItem('userEmail') || 'duyquang536@gmail.com');
   const [phone, setPhone] = useState('0987654321');
   const [gender, setGender] = useState('Nam');
+  const [creditScore, setCreditScore] = useState(100);
   
   const [birthDay, setBirthDay] = useState('27');
   const [birthMonth, setBirthMonth] = useState('05');
   const [birthYear, setBirthYear] = useState('2000');
+
+  // Tải thông tin hồ sơ và điểm uy tín từ database khi load trang
+  useEffect(() => {
+    getProfileAPI()
+      .then(res => {
+        if (res.data.status === 'success') {
+          const user = res.data.data;
+          setFullName(user.full_name || '');
+          setEmail(user.email || '');
+          setUsername(user.email?.split('@')[0] || '');
+          setPhone(user.phone || '');
+          setCreditScore(user.credit_score ?? 100);
+        }
+      })
+      .catch(err => {
+        console.error("Lỗi khi tải thông tin cá nhân:", err);
+      });
+  }, []);
 
   // 🌟 CÁC STATE MỚI: QUẢN LÝ FORM ĐỔI MẬT KHẨU
   const [oldPassword, setOldPassword] = useState('');
@@ -176,6 +195,7 @@ const Profile = () => {
             <div style={{ overflow: 'hidden' }}>
               <div style={{ fontWeight: '600', fontSize: '14px', color: '#ffffff', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{username}</div>
               <div style={{ fontSize: '12px', color: '#10b981', cursor: 'pointer', marginTop: '2px' }} onClick={() => setCurrentTab('profile')}>✏️ Sửa Hồ Sơ</div>
+              <div style={{ fontSize: '11px', color: creditScore < 50 ? '#ef4444' : '#10b981', fontWeight: 'bold', marginTop: '4px' }}>🛡️ Uy tín: {creditScore}đ</div>
             </div>
           </div>
 
@@ -236,9 +256,15 @@ const Profile = () => {
           {/* TAB 1: HỒ SƠ CHÍNH */}
           {currentTab === 'profile' && (
             <div>
-              <div style={{ borderBottom: '1px solid #1f2937', paddingBottom: '18px', marginBottom: '35px' }}>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '600', color: '#ffffff' }}>Hồ Sơ Của Tôi</h3>
-                <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
+              <div style={{ borderBottom: '1px solid #1f2937', paddingBottom: '18px', marginBottom: '35px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '600', color: '#ffffff' }}>Hồ Sơ Của Tôi</h3>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
+                </div>
+                <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.15)', borderRadius: '8px', padding: '8px 16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Điểm Uy Tín</span>
+                  <span style={{ fontSize: '18px', fontWeight: '800', color: creditScore < 50 ? '#ef4444' : '#00e676' }}>{creditScore} / 100</span>
+                </div>
               </div>
 
               <div style={{ display: 'flex', width: '100%', gap: '40px' }}>

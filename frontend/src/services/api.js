@@ -32,4 +32,9 @@ export const forgotPasswordAPI = (email) => API.post('/auth/forgot-password', { 
 export const createOrderAPI = (orderData) => API.post('/orders/create', orderData);
 export const getMyOrdersAPI = () => API.get('/orders/my-orders');
 
+// 🌟 HÀM MỚI BỔ SUNG: Lấy thông tin tài khoản đăng nhập hiện tại & Báo cáo thống kê thật
+export const getProfileAPI = () => API.get('/auth/me');
+export const getRevenueReportAPI = (restaurantId, startDate, endDate) => API.get(`/reports/restaurant/${restaurantId}/revenue?startDate=${startDate}&endDate=${endDate}`);
+export const getTopSellingItemsAPI = (restaurantId) => API.get(`/reports/restaurant/${restaurantId}/top-items`);
+
 export default API;

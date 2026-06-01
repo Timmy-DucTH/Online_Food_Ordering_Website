@@ -68,4 +68,7 @@ router.post('/forgot-password', authController.forgotPassword);
 // Route này sẽ chặn người dùng chưa đăng nhập nhờ vào verifyToken
 router.post('/change-password', verifyToken, authController.changePassword);
 
+// 🌟 TUYẾN ĐƯỜNG MỚI: Lấy thông tin tài khoản đăng nhập hiện tại
+router.get('/me', verifyToken, authController.getMe);
+
 module.exports = router;

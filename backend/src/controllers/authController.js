@@ -250,5 +250,29 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
+// 5. CHỨC NĂNG LẤY THÔNG TIN HỒ SƠ CÁ NHÂN (GET /api/auth/me)
+exports.getMe = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Không tìm thấy thông tin tài khoản!'
+      });
+    }
+    res.status(200).json({
+      status: 'success',
+      data: user
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Đã xảy ra lỗi hệ thống khi tải thông tin hồ sơ!',
+      error: error.message
+    });
+  }
+};
+
 // Xuất bản thêm hàm kiểm tra điểm ra ngoài để các controller khác (nhux Order) có thể tái sử dụng dễ dàng
 exports.updateWithCreditScore = updateWithCreditScore;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'; 
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import API from '../services/api';
+import API, { getRevenueReportAPI, getTopSellingItemsAPI, getProfileAPI } from '../services/api';
 
 const Restaurant = () => {
   const navigate = useNavigate();
@@ -19,6 +19,7 @@ const Restaurant = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [showAddFoodModal, setShowAddFoodModal] = useState(false);
+  const [merchantCreditScore, setMerchantCreditScore] = useState(100);
 
   // States quản lý modal thông báo lỗi và xác nhận nguy hiểm
   const [showErrModal, setShowErrModal] = useState(false);
@@ -69,6 +70,16 @@ const Restaurant = () => {
         return;
       }
       try {
+        // Tải thêm thông tin credit_score của user hiện tại
+        try {
+          const profileRes = await getProfileAPI();
+          if (profileRes.data.status === 'success') {
+            setMerchantCreditScore(profileRes.data.data.credit_score ?? 100);
+          }
+        } catch (profileErr) {
+          console.error("Lỗi khi tải credit score chủ quán:", profileErr);
+        }
+
         const res = await API.get('/restaurants/my-restaurant');
         if (res.data.status === 'success' && res.data.data) {
           const restaurant = res.data.data;
@@ -105,114 +116,97 @@ const Restaurant = () => {
     fetchRestaurantInfo();
   }, [localIsLoggedIn]);
 
-  // Deterministic Mock Stats Generator
-  const generateStats = (start, end) => {
-    const sDate = new Date(start);
-    const eDate = new Date(end);
-    
-    const diffTime = Math.abs(eDate - sDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    const daily = [];
-    let tempDate = new Date(sDate);
-    
-    const getSeededRandom = (str) => {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      return Math.abs(Math.sin(hash)) * 1000;
-    };
-    
-    // Map foods from database to simulate stats on
-    // CHEAPER dishes sell more volume, EXPENSIVE dishes sell less volume
-    const activeItems = [];
-    foods.forEach(f => {
-      // Avoid duplication
-      if (!activeItems.find(item => item.name.toLowerCase() === f.name.toLowerCase())) {
-        const calculatedBaseSales = Math.max(3, Math.round(18 - (f.price / 12000)));
-        const seedRating = 4.5 + (getSeededRandom(f.name) % 5) / 10;
-        
-        activeItems.push({
-          id: f._id,
-          name: f.name,
-          category: f.category,
-          price: f.price,
-          rating: Number(seedRating.toFixed(1)),
-          image: f.image || 'https://via.placeholder.com/300',
-          baseSales: calculatedBaseSales,
-          status: f.status
-        });
-      }
-    });
-    
-    const foodSalesMap = {};
-    activeItems.forEach(item => {
-      foodSalesMap[item.id] = 0;
-    });
-    
-    for (let d = 0; d < diffDays; d++) {
-      const dateStr = tempDate.toISOString().split('T')[0];
-      const seed = getSeededRandom(dateStr);
-      
-      let dayRevenue = 0;
-      let dayOrders = 0;
-      
-      activeItems.forEach(item => {
-        const factor = 0.5 + (seed % 100) / 100;
-        const dailyItemSales = Math.round(item.baseSales * factor);
-        
-        foodSalesMap[item.id] += dailyItemSales;
-        dayRevenue += dailyItemSales * item.price;
-        dayOrders += dailyItemSales;
-      });
-      
-      daily.push({
-        date: dateStr,
-        revenue: dayRevenue,
-        orders: dayOrders
-      });
-      
-      tempDate.setDate(tempDate.getDate() + 1);
-    }
-    
-    const computedFoods = activeItems.map(item => {
-      const totalSales = foodSalesMap[item.id];
-      const revenue = totalSales * item.price;
-      return {
-        ...item,
-        orderCount: totalSales,
-        revenue: revenue
-      };
-    });
-    
-    // Sort by revenue descending to mark top 5 HOT
-    const sortedByRevenue = [...computedFoods].sort((a, b) => b.revenue - a.revenue);
-    const top5Ids = sortedByRevenue.slice(0, 5).map(item => item.id);
-    
-    const finalFoods = computedFoods.map(item => ({
-      ...item,
-      isHot: top5Ids.includes(item.id)
-    }));
-    
-    const totalRev = daily.reduce((sum, d) => sum + d.revenue, 0);
-    const totalOrd = daily.reduce((sum, d) => sum + d.orders, 0);
-    
-    return {
-      totalRevenue: totalRev,
-      totalOrders: totalOrd,
-      dailyData: daily,
-      foodsData: finalFoods
-    };
-  };
-
-  // Run statistics generator whenever dates change or database foods are loaded
+  // Run statistics generator from real backend APIs
   useEffect(() => {
-    if (regStatus === 'approved') {
-      const stats = generateStats(startDate, endDate);
-      setAnalytics(stats);
-    }
-  }, [startDate, endDate, regStatus, foods]);
+    const fetchRealStats = async () => {
+      if (regStatus === 'approved' && shopData?._id) {
+        try {
+          // 1. Fetch real revenue report
+          const revRes = await getRevenueReportAPI(shopData._id, startDate, endDate);
+          const topRes = await getTopSellingItemsAPI(shopData._id);
+          
+          let totalRevenue = 0;
+          let totalOrders = 0;
+          
+          if (revRes.data.status === 'success') {
+            totalRevenue = revRes.data.data.total_revenue || 0;
+            totalOrders = revRes.data.data.total_orders || 0;
+          }
+          
+          // 2. Fetch top items
+          const topItems = topRes.data.status === 'success' ? topRes.data.data : [];
+          const topItemsMap = {};
+          topItems.forEach(item => {
+            topItemsMap[item._id] = item.totalQuantity;
+          });
+          
+          // 3. Map foodsData using actual sales from MongoDB top-items report
+          const computedFoods = foods.map(f => {
+            const orderCount = topItemsMap[f.name] || 0;
+            const revenue = orderCount * f.price;
+            return {
+              id: f._id,
+              name: f.name,
+              category: f.category,
+              price: f.price,
+              rating: 4.8, // Default rating
+              image: f.image || 'https://via.placeholder.com/300',
+              orderCount,
+              revenue,
+              status: f.status
+            };
+          });
+          
+          // Sort by revenue descending to mark top 5 HOT
+          const sortedByRevenue = [...computedFoods].sort((a, b) => b.revenue - a.revenue);
+          const top5Names = sortedByRevenue.slice(0, 5).filter(f => f.revenue > 0).map(item => item.name);
+          
+          const finalFoods = computedFoods.map(item => ({
+            ...item,
+            isHot: top5Names.includes(item.name)
+          }));
+          
+          // 4. Generate dailyData using real completed merchantOrders
+          const completedOrders = merchantOrders.filter(o => {
+            if (o.status !== 'completed') return false;
+            const orderDate = new Date(o.createdAt).toISOString().split('T')[0];
+            return orderDate >= startDate && orderDate <= endDate;
+          });
+          
+          const dailyMap = {};
+          // Initialize daily map with all days in range
+          let tempDate = new Date(startDate);
+          const endD = new Date(endDate);
+          while (tempDate <= endD) {
+            const dateStr = tempDate.toISOString().split('T')[0];
+            dailyMap[dateStr] = { date: dateStr, revenue: 0, orders: 0 };
+            tempDate.setDate(tempDate.getDate() + 1);
+          }
+          
+          completedOrders.forEach(o => {
+            const dateStr = new Date(o.createdAt).toISOString().split('T')[0];
+            if (dailyMap[dateStr]) {
+              dailyMap[dateStr].revenue += o.total_price || 0;
+              dailyMap[dateStr].orders += 1;
+            }
+          });
+          
+          const dailyData = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+          
+          setAnalytics({
+            totalRevenue,
+            totalOrders,
+            dailyData,
+            foodsData: finalFoods
+          });
+        } catch (err) {
+          console.error("Lỗi khi tải báo cáo thống kê thực tế:", err);
+        }
+      }
+    };
+    
+    fetchRealStats();
+  }, [startDate, endDate, regStatus, foods, merchantOrders, shopData]);
 
   // Handle stats date adjustment
   const handleApplyDates = (e) => {
@@ -449,9 +443,14 @@ const Restaurant = () => {
                 </h1>
                 <p style={{ color: '#94a3b8', margin: '5px 0 0 0', fontSize: '14px' }}>Chào mừng chủ cửa hàng <b>{shopData?.merchant_name}</b> quay trở lại quản trị hệ thống.</p>
               </div>
-              <span style={{ fontSize: '12px', padding: '6px 15px', borderRadius: '20px', fontWeight: 'bold', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                Hoạt Động 🟢
-              </span>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', padding: '6px 15px', borderRadius: '20px', fontWeight: 'bold', backgroundColor: merchantCreditScore < 50 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: merchantCreditScore < 50 ? '#ef4444' : '#10b981', border: merchantCreditScore < 50 ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)' }}>
+                  🛡️ Uy tín: {merchantCreditScore}đ
+                </span>
+                <span style={{ fontSize: '12px', padding: '6px 15px', borderRadius: '20px', fontWeight: 'bold', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                  Hoạt Động 🟢
+                </span>
+              </div>
             </div>
 
             {/* ================= TAB 1: TỔNG QUAN CỬA HÀNG ================= */}
