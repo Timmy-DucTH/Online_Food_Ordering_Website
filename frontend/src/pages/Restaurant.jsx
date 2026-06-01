@@ -1022,10 +1022,16 @@ const Restaurant = () => {
               <input type="number" placeholder="Đơn giá bán lẻ (VNĐ)" value={newFood.price} onChange={(e) => setNewFood({ ...newFood, price: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} required />
               <select value={newFood.category} onChange={(e) => setNewFood({ ...newFood, category: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none', cursor: 'pointer' }} required>
                 <option value="" style={{ backgroundColor: '#0b0f19' }}>-- Chọn danh mục món ăn --</option>
-                <option value="Đồ ăn nhanh" style={{ backgroundColor: '#0b0f19' }}>Đồ ăn nhanh</option>
-                <option value="Món nước" style={{ backgroundColor: '#0b0f19' }}>Món nước</option>
+                <option value="Burger" style={{ backgroundColor: '#0b0f19' }}>Burger</option>
+                <option value="Pizza" style={{ backgroundColor: '#0b0f19' }}>Pizza</option>
                 <option value="Cơm văn phòng" style={{ backgroundColor: '#0b0f19' }}>Cơm văn phòng</option>
-                <option value="Trà sữa & Đồ uống" style={{ backgroundColor: '#0b0f19' }}>Trà sữa & Đồ uống</option>
+                <option value="Món nước" style={{ backgroundColor: '#0b0f19' }}>Món nước</option>
+                <option value="Trà sữa" style={{ backgroundColor: '#0b0f19' }}>Trà sữa</option>
+                <option value="Cà phê" style={{ backgroundColor: '#0b0f19' }}>Cà phê</option>
+                <option value="Tráng miệng" style={{ backgroundColor: '#0b0f19' }}>Tráng miệng</option>
+                <option value="Đồ ăn nhanh" style={{ backgroundColor: '#0b0f19' }}>Đồ ăn nhanh</option>
+                <option value="Đồ uống khác" style={{ backgroundColor: '#0b0f19' }}>Đồ uống khác</option>
+                <option value="Khác" style={{ backgroundColor: '#0b0f19' }}>Khác</option>
               </select>
               <input type="text" placeholder="URL ảnh minh họa món ăn" value={newFood.image} onChange={(e) => setNewFood({ ...newFood, image: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} required />
               <input type="text" placeholder="Mô tả thành phần dinh dưỡng" value={newFood.description} onChange={(e) => setNewFood({ ...newFood, description: e.target.value })} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} />

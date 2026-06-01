@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FoodCard from '../components/FoodCard';
 
-const CATEGORIES = ['Tất cả', 'Burger', 'Pizza', 'Cơm', 'Mì & Phở', 'Đồ uống', 'Tráng miệng', 'Khác'];
+const CATEGORIES = ['Tất cả', 'Burger', 'Pizza', 'Cơm văn phòng', 'Món nước', 'Trà sữa', 'Cà phê', 'Tráng miệng', 'Đồ ăn nhanh', 'Đồ uống khác', 'Khác'];
 
 const Home = () => {
   const navigate = useNavigate();
