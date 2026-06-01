@@ -172,8 +172,6 @@ const Home = () => {
   useEffect(() => {
     if (activeTab === 'feed') {
       loadPosts();
-    } else if (activeTab === 'notifications') {
-      loadNotifications();
     } else if (activeTab === 'chat') {
       // Load chat contacts
       fetch('/api/messages/users', {
@@ -200,8 +198,7 @@ const Home = () => {
     }
   }, [isLoggedIn]);
 
-  // Compute unread notifications count
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+
 
   const checkAuthAndExecute = (callback) => {
     const token = localStorage.getItem('token');
@@ -385,6 +382,8 @@ const Home = () => {
     }
   };
 
+
+
   // Select chat contact
   const handleSelectContact = (contact) => {
     setSelectedContact(contact);
@@ -533,6 +532,8 @@ const Home = () => {
         clearCart={clearCart}
         openPendingModal={() => setShowModal(true)}
         isLoggedIn={isLoggedIn}
+        notifications={notifications}
+        setNotifications={setNotifications}
       />
 
       {/* CORE 3-COLUMN LAYOUT CONTAINER */}
@@ -585,22 +586,7 @@ const Home = () => {
             <span>💬</span> Nhắn Tin (Chat)
           </div>
 
-          <div 
-            style={sidebarItemStyle('notifications')} 
-            onClick={() => {
-              if (!isLoggedIn) return navigate('/login');
-              setActiveTab('notifications');
-            }}
-            onMouseEnter={(e) => { if (activeTab !== 'notifications') e.currentTarget.style.backgroundColor = '#1f2937'; }}
-            onMouseLeave={(e) => { if (activeTab !== 'notifications') e.currentTarget.style.backgroundColor = 'transparent'; }}
-          >
-            <span>🔔</span> Thông Báo
-            {isLoggedIn && unreadCount > 0 && (
-              <span style={{ position: 'absolute', right: '16px', backgroundColor: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold' }}>
-                {unreadCount}
-              </span>
-            )}
-          </div>
+
         </div>
 
         {/* ==============================================
@@ -1073,50 +1059,7 @@ const Home = () => {
             </div>
           )}
 
-          {/* TAB 5: SOCIAL NOTIFICATIONS */}
-          {activeTab === 'notifications' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {notifications.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', color: '#64748b' }}>
-                  <div style={{ fontSize: '32px', marginBottom: '10px' }}>🔔</div>
-                  <p>Hộp thư thông báo xã hội của bạn đang trống.</p>
-                </div>
-              ) : (
-                notifications.map(n => (
-                  <div 
-                    key={n._id}
-                    onClick={() => { if (!n.is_read) handleMarkNotificationRead(n._id); }}
-                    style={{
-                      backgroundColor: n.is_read ? '#111827' : 'rgba(16, 185, 129, 0.08)',
-                      border: '1px solid #1f2937',
-                      borderColor: n.is_read ? '#1f2937' : '#10b981',
-                      borderRadius: '10px',
-                      padding: '16px',
-                      cursor: n.is_read ? 'default' : 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      gap: '12px',
-                      alignItems: 'flex-start'
-                    }}
-                  >
-                    <span style={{ fontSize: '20px' }}>
-                      {n.type === 'order_status' ? '🛵' : n.type === 'discount' ? '🧧' : '💬'}
-                    </span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ margin: 0, fontSize: '14px', color: '#f1f5f9', fontWeight: 'bold' }}>{n.title}</h4>
-                        <span style={{ fontSize: '10px', color: '#64748b' }}>{new Date(n.createdAt).toLocaleDateString('vi-VN')}</span>
-                      </div>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#cbd5e1', lineHeight: '1.4' }}>{n.message}</p>
-                    </div>
-                    {!n.is_read && (
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00e676', marginTop: '6px' }} />
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+
 
         </div>
 
@@ -1215,6 +1158,8 @@ const Home = () => {
         </button>
 
       </div>
+
+
 
       {showModal && (
         <div style={{
