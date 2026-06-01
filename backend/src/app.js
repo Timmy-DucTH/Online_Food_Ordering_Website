@@ -37,7 +37,9 @@ app.use('/api/orders', require('./routes/orderRoutes'));           // Quản lý
 app.use('/api/reviews', require('./routes/reviewRoutes'));         // Quản lý Đánh giá cửa hàng
 
 // Bạn có thể mở thêm các cụm routes này sau khi tạo file tương ứng:
-// app.use('/api/posts', require('./routes/postRoutes'));         // Mạng xã hội & Tương tác (BM7)
+app.use('/api/posts', require('./routes/postRoutes'));         // Mạng xã hội & Tương tác (BM7)
+app.use('/api/notifications', require('./routes/notificationRoutes')); // Thông báo MXH
+app.use('/api/messages', require('./routes/messageRoutes')); // Tin nhắn chat
 app.use('/api/reports', require('./routes/reportRoutes'));     // Thống kê & Báo cáo doanh thu (BM8, BM9)
 
 // 3. MIDDLEWARE XỬ LÝ LỖI TẬP TRUNG (Error Handler)
