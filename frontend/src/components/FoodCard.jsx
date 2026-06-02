@@ -3,16 +3,9 @@ import { useState } from 'react';
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=500';
 
 const StarRating = ({ rating }) => {
-  const fullStars = Math.floor(rating);
-  const hasHalf = rating - fullStars >= 0.5;
   return (
-    <span style={{ color: '#fbbf24', fontSize: '13px', letterSpacing: '1px' }}>
-      {Array.from({ length: 5 }, (_, i) => {
-        if (i < fullStars) return '★';
-        if (i === fullStars && hasHalf) return '½';
-        return '☆';
-      }).join('')}
-      <span style={{ color: '#94a3b8', marginLeft: '4px', fontSize: '12px' }}>{rating.toFixed(1)}</span>
+    <span style={{ color: '#fbbf24', fontSize: '13px', fontWeight: 'bold' }}>
+      {rating.toFixed(1)}★
     </span>
   );
 };
@@ -74,8 +67,6 @@ const FoodDetailModal = ({ food, onClose, addToCart, handleBuyNow }) => {
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
             <StarRating rating={food.rating || 4.5} />
-            <span style={{ fontSize: '12px', color: '#64748b' }}>•</span>
-            <span style={{ fontSize: '13px', color: '#64748b' }}>ID: {String(food._id).slice(-6).toUpperCase()}</span>
           </div>
 
           {/* Description */}
