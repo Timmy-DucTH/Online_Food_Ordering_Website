@@ -51,53 +51,10 @@ const Home = () => {
     ]
   });
 
-  // Communities States
-  const [activeCommunity, setActiveCommunity] = useState(null);
-  const communitiesList = [
-    {
-      id: 'milktea',
-      name: 'Hội mê trà sữa 🥤',
-      description: 'Nơi hội tụ của các tín đồ trà sữa trân châu đường đen, matcha chi ngậy...',
-      members: 1420,
-      activeToday: 48,
-      posts: [
-        { author: 'Lê Minh Anh', avatar: '👩', content: 'Mọi người cho hỏi trà sữa Gong Cha dạo này có vị mới gì ngon không? Thấy review Matcha Latte ngon lắm.', likes: 24, replies: 5 },
-        { author: 'Trần Hoàng', avatar: '👨', content: 'Topping trân châu hoàng kim của Koi The vẫn là chân ái cuộc đời!!!', likes: 45, replies: 12 }
-      ]
-    },
-    {
-      id: 'brokenrice',
-      name: 'Hội nghiện sườn bì chả 🍖',
-      description: 'Tìm kiếm dĩa cơm tấm ngon nhất Sài Gòn/Hà Nội. Cơm tấm phải có nước mắm kẹo!',
-      members: 2310,
-      activeToday: 62,
-      posts: [
-        { author: 'Nguyễn Duy', avatar: '👨', content: 'Cơm tấm bãi rác quận 4 đắt xắt ra miếng nhưng sườn ướp ngon cực kì.', likes: 89, replies: 18 },
-        { author: 'Vy Nguyễn', avatar: '👩', content: 'Ai biết chỗ bán cơm tấm ngon khu vực Thủ Đức không ạ? Thèm sườn nướng mỡ hành quá.', likes: 12, replies: 7 }
-      ]
-    },
-    {
-      id: 'vegetarian',
-      name: 'Cộng đồng ăn chay 🌱',
-      description: 'Chia sẻ các địa điểm ăn chay thanh tịnh, công thức món chay bổ dưỡng mỗi ngày.',
-      members: 950,
-      activeToday: 15,
-      posts: [
-        { author: 'Diệu Thảo', avatar: '👩', content: 'Hôm nay tự nấu bún riêu chay từ đậu hũ và nấm đùi gà ngon xỉu luôn cả nhà ơi.', likes: 38, replies: 4 }
-      ]
-    }
-  ];
-
   // Hot food reviews (Right Sidebar)
   const hotReviews = [
     { id: 1, title: 'Trà sữa KOI Thé béo ngậy', author: 'Minh Thư (KOL)', rating: 5, img: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300' },
     { id: 2, title: 'Cơm Tấm sườn nướng mật ong', author: 'Khoai Lang Thang', rating: 4.8, img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300' }
-  ];
-
-  // Online Friends List
-  const onlineFriends = [
-    { id: 'driver_default_1', _id: 'driver_default_1', name: 'Shipper Nguyễn Văn Hùng', avatar: '🛵', role: 'driver', isVirtual: true },
-    { id: 'store_default_1', _id: 'store_default_1', name: 'TasteByte Customer Support', avatar: '🟢', role: 'merchant', isVirtual: true }
   ];
 
   // Fetch real food data from API
@@ -279,7 +236,7 @@ const Home = () => {
   const filteredFoods = foods.filter(food => {
     const matchCat = selectedCategory === 'Tất cả' || food.category === selectedCategory;
     const matchSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (food.restaurant_id?.store_name || food.restaurant_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+      (food.restaurant_id?.display_name || food.restaurant_id?.store_name || food.restaurant_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchCat && matchSearch;
   });
 
@@ -601,14 +558,6 @@ const Home = () => {
             <span>📰</span> Bảng Tin (Feed)
           </div>
 
-          <div 
-            style={sidebarItemStyle('communities')} 
-            onClick={() => setActiveTab('communities')}
-            onMouseEnter={(e) => { if (activeTab !== 'communities') e.currentTarget.style.backgroundColor = '#1f2937'; }}
-            onMouseLeave={(e) => { if (activeTab !== 'communities') e.currentTarget.style.backgroundColor = 'transparent'; }}
-          >
-            <span>👥</span> Nhóm Cộng Đồng
-          </div>
 
           <div 
             style={sidebarItemStyle('chat')} 
@@ -905,77 +854,6 @@ const Home = () => {
             </div>
           )}
 
-          {/* TAB 3: COMMUNITIES VIEW */}
-          {activeTab === 'communities' && (
-            <div>
-              {activeCommunity ? (
-                // Selected Community Detail View
-                <div style={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
-                  <button 
-                    onClick={() => setActiveCommunity(null)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: 'none', color: '#00e676', cursor: 'pointer', fontWeight: 'bold', marginBottom: '16px', fontSize: '14px' }}
-                  >
-                    ⬅️ Quay lại danh sách nhóm
-                  </button>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '16px', marginBottom: '20px' }}>
-                    <div>
-                      <h2 style={{ margin: 0, color: '#f1f5f9', fontSize: '24px' }}>{activeCommunity.name}</h2>
-                      <p style={{ color: '#94a3b8', fontSize: '14px', margin: '4px 0 0 0' }}>{activeCommunity.description}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ display: 'block', fontWeight: 'bold', color: '#00e676', fontSize: '18px' }}>{activeCommunity.members}</span>
-                      <span style={{ color: '#64748b', fontSize: '11px' }}>Thành viên ({activeCommunity.activeToday} đang online)</span>
-                    </div>
-                  </div>
-
-                  <h3 style={{ fontSize: '16px', color: '#00e676', margin: '0 0 16px 0' }}>Bài đăng sôi nổi gần đây</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {activeCommunity.posts.map((cp, idx) => (
-                      <div key={idx} style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '10px', padding: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                          <span style={{ fontSize: '16px' }}>{cp.avatar}</span>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#e2e8f0' }}>{cp.author}</span>
-                          <span style={{ fontSize: '10px', color: '#64748b', marginLeft: 'auto' }}>1 giờ trước</span>
-                        </div>
-                        <p style={{ fontSize: '13px', color: '#cbd5e1', margin: '0 0 12px 0', lineHeight: '1.5' }}>{cp.content}</p>
-                        <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#64748b' }}>
-                          <span>❤️ {cp.likes} Lượt thích</span>
-                          <span>💬 {cp.replies} Lượt bình luận</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                // Communities Directory List
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                  {communitiesList.map(comm => (
-                    <div 
-                      key={comm.id}
-                      onClick={() => setActiveCommunity(comm)}
-                      style={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '20px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(0,0,0,0.15)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1f2937'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <h3 style={{ margin: '0 0 6px 0', color: '#f1f5f9', fontSize: '18px' }}>{comm.name}</h3>
-                          <p style={{ color: '#cbd5e1', fontSize: '13px', margin: 0 }}>{comm.description}</p>
-                        </div>
-                        <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
-                          🧑‍🤝‍🧑 {comm.members}
-                        </div>
-                      </div>
-                      <div style={{ marginTop: '12px', borderTop: '1px solid #1f2937', paddingTop: '10px', fontSize: '12px', color: '#64748b' }}>
-                        Có <strong>{comm.activeToday} bài viết/tương tác</strong> trong hôm nay. Nhấn để tham gia thảo luận.
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* TAB 4: CHAT SYSTEM */}
           {activeTab === 'chat' && (
@@ -1117,31 +995,7 @@ const Home = () => {
           overflow: 'hidden',
           position: 'relative'
         }}>
-          {/* Online Friends List */}
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '1px', borderBottom: '1px solid #1f2937', paddingBottom: '8px' }}>Bạn bè online</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-            {onlineFriends.map(friend => (
-              <div 
-                key={friend.id} 
-                onClick={() => {
-                  if (!isLoggedIn) return navigate('/login');
-                  setActiveTab('chat');
-                  handleSelectContact(friend);
-                }}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '4px', borderRadius: '6px' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1f2937'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-              >
-                <div style={{ position: 'relative' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#1f2937', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', border: '1px solid #64748b' }}>
-                    {friend.avatar}
-                  </div>
-                  <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00e676', border: '1.5px solid #111827' }} />
-                </div>
-                <span style={{ fontSize: '13px', fontWeight: '500', color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{friend.name}</span>
-              </div>
-            ))}
-          </div>
+
 
           {/* Trending KOL Reviews */}
           <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '1px', borderBottom: '1px solid #1f2937', paddingBottom: '8px' }}>HOT REVIEW</h4>
@@ -1190,7 +1044,7 @@ const Home = () => {
           }}
           title={rightSidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
         >
-          {rightSidebarOpen ? '➡️' : '👥'}
+          {rightSidebarOpen ? '➡️' : '🔥'}
         </button>
 
       </div>

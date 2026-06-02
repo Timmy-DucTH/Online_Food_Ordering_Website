@@ -9,6 +9,10 @@ exports.registerRestaurant = async (req, res) => {
     const { store_name, merchant_name, address, license_image, hygiene_image } = req.body;
     const owner_id = req.user.id; // Lấy từ verifyToken middleware
 
+    // Lấy thông tin tài khoản người dùng để trích xuất username
+    const user = await User.findById(owner_id);
+    const owner_username = user ? user.email.split('@')[0] : '';
+
     // Kiểm tra xem người dùng đã từng gửi hồ sơ chưa
     let restaurant = await Restaurant.findOne({ owner_id });
     if (restaurant) {
@@ -18,6 +22,7 @@ exports.registerRestaurant = async (req, res) => {
       restaurant.address = address;
       restaurant.license_image = license_image;
       restaurant.hygiene_image = hygiene_image;
+      restaurant.owner_username = owner_username;
       restaurant.status = 'pending';
       await restaurant.save();
     } else {
@@ -29,6 +34,7 @@ exports.registerRestaurant = async (req, res) => {
         address,
         license_image,
         hygiene_image,
+        owner_username,
         status: 'pending'
       });
     }
@@ -240,6 +246,97 @@ exports.getMyOrders = async (req, res) => {
     });
 
     res.status(200).json({ status: 'success', orders: mapped });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Cập nhật cấu hình hiển thị tên cửa hàng (được thay đổi giữa 'store_name' và 'username')
+exports.updateDisplayNameType = async (req, res) => {
+  try {
+    const owner_id = req.user.id;
+    const { display_name_type } = req.body;
+
+    if (!['store_name', 'username'].includes(display_name_type)) {
+      return res.status(400).json({ status: 'fail', message: 'Loại hiển thị tên không hợp lệ!' });
+    }
+
+    const restaurant = await Restaurant.findOne({ owner_id });
+    if (!restaurant) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy thông tin cửa hàng!' });
+    }
+
+    // Nếu chưa có owner_username thì tự động điền vào
+    if (!restaurant.owner_username) {
+      const user = await User.findById(owner_id);
+      restaurant.owner_username = user ? user.email.split('@')[0] : '';
+    }
+
+    restaurant.display_name_type = display_name_type;
+    await restaurant.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: '✓ Cập nhật cấu hình hiển thị tên cửa hàng thành công!',
+      data: restaurant
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Merchant tự xóa món ăn của họ
+exports.deleteMerchantFood = async (req, res) => {
+  try {
+    const owner_id = req.user.id;
+    const restaurant = await Restaurant.findOne({ owner_id });
+    if (!restaurant) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy thông tin cửa hàng!' });
+    }
+
+    const food = await Food.findOneAndDelete({ _id: req.params.id, restaurant_id: restaurant._id });
+    if (!food) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy món ăn hoặc món ăn không thuộc về cửa hàng của bạn!' });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: '✓ Đã xóa món ăn thành công khỏi thực đơn!'
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Merchant tự cập nhật thông tin món ăn của họ (cần chuyển status về pending để admin duyệt lại)
+exports.updateMerchantFood = async (req, res) => {
+  try {
+    const owner_id = req.user.id;
+    const restaurant = await Restaurant.findOne({ owner_id });
+    if (!restaurant) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy thông tin cửa hàng!' });
+    }
+
+    const { name, price, category, image, description } = req.body;
+    if (price !== undefined && price <= 0) {
+      return res.status(400).json({ status: 'fail', message: 'Đơn giá món ăn phải lớn hơn 0!' });
+    }
+
+    const food = await Food.findOneAndUpdate(
+      { _id: req.params.id, restaurant_id: restaurant._id },
+      { name, price, category, image, description, status: 'pending' },
+      { new: true }
+    );
+
+    if (!food) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy món ăn hoặc món ăn không thuộc về cửa hàng của bạn!' });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: '🍔 Cập nhật thông tin món ăn thành công! Vui lòng chờ Admin duyệt lại để phát hành.',
+      data: food
+    });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }

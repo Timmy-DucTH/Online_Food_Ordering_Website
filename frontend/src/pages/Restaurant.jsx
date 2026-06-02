@@ -22,6 +22,11 @@ const Restaurant = () => {
   const [merchantCreditScore, setMerchantCreditScore] = useState(100);
   const [restaurantReviews, setRestaurantReviews] = useState([]);
   const [reviewReplyTexts, setReviewReplyTexts] = useState({});
+  const [displayNameType, setDisplayNameType] = useState('store_name');
+  const [selectedFood, setSelectedFood] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditFoodModal, setShowEditFoodModal] = useState(false);
+  const [editFoodData, setEditFoodData] = useState({ name: '', price: '', category: '', image: '', description: '' });
 
   // States quản lý modal thông báo lỗi và xác nhận nguy hiểm
   const [showErrModal, setShowErrModal] = useState(false);
@@ -87,6 +92,7 @@ const Restaurant = () => {
           const restaurant = res.data.data;
           setRegStatus(restaurant.status);
           setShopData(restaurant);
+          setDisplayNameType(restaurant.display_name_type || 'store_name');
           localStorage.setItem('restaurantStatus', restaurant.status);
 
           // Nếu đã được duyệt, tải thêm danh sách món ăn & đơn hàng từ database
@@ -163,7 +169,8 @@ const Restaurant = () => {
               image: f.image || 'https://via.placeholder.com/300',
               orderCount,
               revenue,
-              status: f.status
+              status: f.status,
+              description: f.description || ''
             };
           });
           
@@ -305,6 +312,77 @@ const Restaurant = () => {
   const handleLogout = () => {
     localStorage.clear();
     navigate('/login');
+  };
+
+  const handleSaveDisplayNameType = async (newType) => {
+    try {
+      const res = await API.put('/restaurants/display-name-type', { display_name_type: newType });
+      if (res.data.status === 'success') {
+        setDisplayNameType(newType);
+        setSuccessMsg('✓ Đã cập nhật cấu hình hiển thị tên cửa hàng!');
+        setShopData(prev => ({
+          ...prev,
+          display_name_type: newType,
+          display_name: res.data.data.display_name
+        }));
+      }
+    } catch (err) {
+      showMerchantError(err.response?.data?.message || 'Không thể cập nhật cấu hình hiển thị tên!');
+    }
+  };
+
+  const handleShowFoodDetail = (food) => {
+    setSelectedFood(food);
+    setShowDetailModal(true);
+  };
+
+  const handleStartEditFood = (food) => {
+    setEditFoodData({
+      id: food.id,
+      name: food.name,
+      price: food.price,
+      category: food.category,
+      image: food.image,
+      description: food.description || ''
+    });
+    setShowDetailModal(false);
+    setShowEditFoodModal(true);
+  };
+
+  const handleEditFoodSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    try {
+      const res = await API.put(`/restaurants/foods/${editFoodData.id}`, {
+        name: editFoodData.name,
+        price: editFoodData.price,
+        category: editFoodData.category,
+        image: editFoodData.image,
+        description: editFoodData.description
+      });
+      if (res.data.status === 'success') {
+        setSuccessMsg('🍔 Cập nhật thông tin món ăn thành công! Đang chờ Admin duyệt lại.');
+        setFoods(prev => prev.map(f => f._id === editFoodData.id ? res.data.data : f));
+        setShowEditFoodModal(false);
+      }
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin món ăn!');
+    }
+  };
+
+  const handleDeleteFood = (foodId, foodName) => {
+    showMerchantConfirm(`Bạn có chắc chắn muốn xóa món ăn [${foodName}] khỏi thực đơn?`, async () => {
+      try {
+        const res = await API.delete(`/restaurants/foods/${foodId}`);
+        if (res.data.status === 'success') {
+          setSuccessMsg('✓ Đã xóa món ăn thành công!');
+          setFoods(prev => prev.filter(f => f._id !== foodId));
+          setShowDetailModal(false);
+        }
+      } catch (err) {
+        showMerchantError(err.response?.data?.message || 'Xóa món ăn thất bại!');
+      }
+    });
   };
 
   const renderSVGChart = () => {
@@ -467,7 +545,7 @@ const Restaurant = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #1f2937', paddingBottom: '15px' }}>
               <div>
                 <h1 style={{ fontSize: '28px', color: '#ffffff', margin: 0, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span>🏪</span> {shopData?.store_name}
+                  <span>🏪</span> {shopData?.display_name || shopData?.store_name}
                 </h1>
                 <p style={{ color: '#94a3b8', margin: '5px 0 0 0', fontSize: '14px' }}>Chào mừng chủ cửa hàng <b>{shopData?.merchant_name}</b> quay trở lại quản trị hệ thống.</p>
               </div>
@@ -638,7 +716,7 @@ const Restaurant = () => {
                     </div>
                   ) : (
                     analytics.foodsData.map((food) => (
-                      <div key={food.id} style={{ backgroundColor: '#0b0f19', borderRadius: '10px', border: '1px solid #1f2937', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative', transition: 'transform 0.2s, box-shadow 0.2s', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.3)'; }} onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)'; }}>
+                      <div key={food.id} onClick={() => handleShowFoodDetail(food)} style={{ backgroundColor: '#0b0f19', borderRadius: '10px', border: '1px solid #1f2937', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative', transition: 'transform 0.2s, box-shadow 0.2s', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer' }} onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.3)'; }} onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)'; }}>
                         
                         {/* Ảnh sản phẩm */}
                         <div style={{ position: 'relative', width: '100%', height: '160px', overflow: 'hidden' }}>
@@ -857,6 +935,48 @@ const Restaurant = () => {
                 </div>
 
                 <div style={{ backgroundColor: '#111827', borderRadius: '12px', border: '1px solid #1f2937', padding: '30px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                  <h3 style={{ margin: '0 0 15px 0', color: '#ffffff', fontSize: '18px', fontWeight: '700', borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>⚙️ Cấu Hình Hiển Thị Tên Cửa Hàng</h3>
+                  <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>Chọn tên bạn muốn hiển thị đến khách hàng trên toàn hệ thống (món ăn, danh sách cửa hàng, lịch sử mua hàng...).</p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#ffffff' }}>
+                        <input 
+                          type="radio" 
+                          name="displayNameType" 
+                          value="store_name" 
+                          checked={displayNameType === 'store_name'} 
+                          onChange={() => handleSaveDisplayNameType('store_name')} 
+                          style={{ accentColor: '#10b981', transform: 'scale(1.2)' }}
+                        />
+                        <span>Tên cửa hàng (Mặc định): <strong>{shopData?.store_name}</strong></span>
+                      </label>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#ffffff' }}>
+                        <input 
+                          type="radio" 
+                          name="displayNameType" 
+                          value="username" 
+                          checked={displayNameType === 'username'} 
+                          onChange={() => handleSaveDisplayNameType('username')} 
+                          style={{ accentColor: '#10b981', transform: 'scale(1.2)' }}
+                        />
+                        <span>Tên đăng nhập (Username): <strong>{shopData?.owner_username || 'username'}</strong></span>
+                      </label>
+                    </div>
+
+                    <div style={{ marginTop: '10px', padding: '15px', backgroundColor: '#0b0f19', borderRadius: '8px', border: '1px solid #1f2937' }}>
+                      <span style={{ fontSize: '13px', color: '#94a3b8' }}>Xem trước hiển thị: </span>
+                      <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#10b981', marginLeft: '10px' }}>
+                        🏪 {displayNameType === 'username' ? (shopData?.owner_username || 'username') : shopData?.store_name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#111827', borderRadius: '12px', border: '1px solid #1f2937', padding: '30px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
                   <h3 style={{ margin: '0 0 20px 0', color: '#ffffff', fontSize: '18px', fontWeight: '700', borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>📸 Giấy Tờ & Chứng Nhận Quốc Tế</h3>
                   <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: '240px' }}>
@@ -974,6 +1094,170 @@ const Restaurant = () => {
 
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* 🔍 MODAL XEM CHI TIẾT MÓN ĂN */}
+      {showDetailModal && selectedFood && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(11, 15, 25, 0.85)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
+          <div style={{ backgroundColor: '#111827', width: '500px', maxWidth: '90%', padding: '30px', borderRadius: '12px', border: '1px solid #1f2937', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', boxSizing: 'border-box', position: 'relative', textAlign: 'left' }}>
+            
+            <button 
+              onClick={() => setShowDetailModal(false)}
+              style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'transparent', border: 'none', color: '#94a3b8', fontSize: '22px', cursor: 'pointer', outline: 'none' }}
+              onMouseOver={(e) => e.target.style.color = '#ffffff'}
+              onMouseOut={(e) => e.target.style.color = '#94a3b8'}
+            >
+              ✕
+            </button>
+
+            <h3 style={{ margin: '0 0 15px 0', color: '#ffffff', fontWeight: '700', fontSize: '20px', borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>🔍 Chi Tiết Món Ăn</h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div style={{ width: '100%', height: '200px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #1f2937', backgroundColor: '#0b0f19' }}>
+                <img src={selectedFood.image} alt={selectedFood.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              
+              <h4 style={{ margin: '5px 0 0 0', fontSize: '22px', fontWeight: '800', color: '#ffffff' }}>{selectedFood.name}</h4>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', fontSize: '14px', color: '#cbd5e1' }}>
+                <div>
+                  <p style={{ margin: '4px 0' }}>📂 <strong>Danh mục:</strong> {selectedFood.category}</p>
+                  <p style={{ margin: '4px 0' }}>💰 <strong>Đơn giá:</strong> <span style={{ color: '#10b981', fontWeight: 'bold' }}>{selectedFood.price.toLocaleString('vi-VN')}đ</span></p>
+                  <p style={{ margin: '4px 0' }}>⭐ <strong>Đánh giá:</strong> {selectedFood.rating} ★</p>
+                </div>
+                <div>
+                  <p style={{ margin: '4px 0' }}>📦 <strong>Đã bán:</strong> {selectedFood.orderCount} lượt</p>
+                  <p style={{ margin: '4px 0' }}>📈 <strong>Doanh thu:</strong> <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>{selectedFood.revenue.toLocaleString('vi-VN')}đ</span></p>
+                  <p style={{ margin: '4px 0' }}>🛡️ <strong>Trạng thái:</strong> 
+                    <span style={{ 
+                      marginLeft: '6px', fontSize: '12px', fontWeight: 'bold',
+                      color: selectedFood.status === 'approved' ? '#10b981' : selectedFood.status === 'pending' ? '#f59e0b' : '#ef4444' 
+                    }}>
+                      {selectedFood.status === 'pending' ? 'Chờ duyệt' : selectedFood.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {selectedFood.description && (
+                <div style={{ borderTop: '1px solid #1f2937', paddingTop: '10px', marginTop: '5px' }}>
+                  <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#94a3b8', fontWeight: 'bold' }}>📝 Mô tả món ăn:</p>
+                  <p style={{ margin: 0, fontSize: '13.5px', color: '#cbd5e1', lineHeight: '1.5', whiteSpace: 'pre-line' }}>{selectedFood.description}</p>
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid #1f2937', paddingTop: '15px' }}>
+                <button 
+                  onClick={() => handleDeleteFood(selectedFood.id, selectedFood.name)} 
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+                >
+                  🗑️ Xóa món
+                </button>
+                <button 
+                  onClick={() => handleStartEditFood(selectedFood)} 
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+                >
+                  ✏️ Chỉnh sửa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ MODAL CHỈNH SỬA MÓN ĂN */}
+      {showEditFoodModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(11, 15, 25, 0.85)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
+          <div style={{ backgroundColor: '#111827', width: '500px', maxWidth: '90%', padding: '30px', borderRadius: '12px', border: '1px solid #1f2937', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', boxSizing: 'border-box', position: 'relative', textAlign: 'left' }}>
+            
+            <button 
+              onClick={() => { setShowEditFoodModal(false); setErrorMsg(''); }}
+              style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'transparent', border: 'none', color: '#94a3b8', fontSize: '22px', cursor: 'pointer', outline: 'none' }}
+              onMouseOver={(e) => e.target.style.color = '#ffffff'}
+              onMouseOut={(e) => e.target.style.color = '#94a3b8'}
+            >
+              ✕
+            </button>
+
+            <h3 style={{ margin: '0 0 8px 0', color: '#ffffff', fontWeight: '700', fontSize: '18px' }}>✏️ Chỉnh Sửa Món Ăn</h3>
+            <p style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px' }}>
+              Thay đổi thông tin bên dưới và lưu lại. Món ăn sẽ được chuyển về trạng thái chờ duyệt.
+            </p>
+
+            {errorMsg && (
+              <div style={{ padding: '10px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px', marginBottom: '15px', fontSize: '13px' }}>
+                {errorMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleEditFoodSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <input 
+                type="text" 
+                placeholder="Tên món ăn" 
+                value={editFoodData.name} 
+                onChange={(e) => setEditFoodData({ ...editFoodData, name: e.target.value })} 
+                style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} 
+                required 
+              />
+              <input 
+                type="number" 
+                placeholder="Đơn giá bán lẻ (VNĐ)" 
+                value={editFoodData.price} 
+                onChange={(e) => setEditFoodData({ ...editFoodData, price: e.target.value })} 
+                style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} 
+                required 
+              />
+              <select 
+                value={editFoodData.category} 
+                onChange={(e) => setEditFoodData({ ...editFoodData, category: e.target.value })} 
+                style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none', cursor: 'pointer' }} 
+                required
+              >
+                <option value="" style={{ backgroundColor: '#0b0f19' }}>-- Chọn danh mục món ăn --</option>
+                <option value="Burger" style={{ backgroundColor: '#0b0f19' }}>Burger</option>
+                <option value="Pizza" style={{ backgroundColor: '#0b0f19' }}>Pizza</option>
+                <option value="Cơm" style={{ backgroundColor: '#0b0f19' }}>Cơm</option>
+                <option value="Món nước" style={{ backgroundColor: '#0b0f19' }}>Món nước</option>
+                <option value="Trà sữa" style={{ backgroundColor: '#0b0f19' }}>Trà sữa</option>
+                <option value="Cà phê" style={{ backgroundColor: '#0b0f19' }}>Cà phê</option>
+                <option value="Tráng miệng" style={{ backgroundColor: '#0b0f19' }}>Tráng miệng</option>
+                <option value="Đồ ăn nhanh" style={{ backgroundColor: '#0b0f19' }}>Đồ ăn nhanh</option>
+                <option value="Đồ uống khác" style={{ backgroundColor: '#0b0f19' }}>Đồ uống khác</option>
+                <option value="Khác" style={{ backgroundColor: '#0b0f19' }}>Khác</option>
+              </select>
+              <input 
+                type="text" 
+                placeholder="URL ảnh minh họa món ăn" 
+                value={editFoodData.image} 
+                onChange={(e) => setEditFoodData({ ...editFoodData, image: e.target.value })} 
+                style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none' }} 
+                required 
+              />
+              <textarea 
+                placeholder="Mô tả thành phần dinh dưỡng" 
+                value={editFoodData.description} 
+                onChange={(e) => setEditFoodData({ ...editFoodData, description: e.target.value })} 
+                style={{ padding: '12px', borderRadius: '6px', border: '1px solid #1f2937', backgroundColor: '#0b0f19', color: '#ffffff', outline: 'none', resize: 'vertical', minHeight: '80px' }} 
+              />
+              
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowEditFoodModal(false); setErrorMsg(''); }} 
+                  style={{ padding: '10px 20px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #374151', borderRadius: '6px', cursor: 'pointer' }}
+                >
+                  Hủy
+                </button>
+                <button 
+                  type="submit" 
+                  style={{ padding: '10px 30px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  Lưu Thay Đổi
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

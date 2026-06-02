@@ -44,9 +44,29 @@ const restaurantSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
+  },
+  
+  // Cấu hình loại tên hiển thị: 'store_name' hoặc 'username'
+  display_name_type: {
+    type: String,
+    enum: ['store_name', 'username'],
+    default: 'store_name'
+  },
+
+  // Tên đăng nhập của chủ cửa hàng (dùng khi display_name_type = 'username')
+  owner_username: {
+    type: String,
+    default: ''
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Trường ảo display_name tự động lấy tên hiển thị phù hợp
+restaurantSchema.virtual('display_name').get(function() {
+  return this.display_name_type === 'username' ? (this.owner_username || 'Cửa hàng') : this.store_name;
 });
 
 module.exports = mongoose.model('restaurant', restaurantSchema);

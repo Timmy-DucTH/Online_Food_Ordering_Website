@@ -86,7 +86,7 @@ const FoodDetailModal = ({ food, onClose, addToCart, handleBuyNow }) => {
                 🏪 Thông tin cửa hàng
               </div>
               <div style={{ color: '#10b981', fontWeight: '700', fontSize: '15px', marginBottom: '4px' }}>
-                {restaurant.store_name || food.restaurant_name}
+                {restaurant.display_name || restaurant.store_name || food.restaurant_name}
               </div>
               {restaurant.address && (
                 <div style={{ color: '#94a3b8', fontSize: '13px', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
@@ -218,12 +218,11 @@ const FoodCard = ({ item, addToCart, handleBuyNow }) => {
             {item.name}
           </h4>
 
-          {/* Restaurant name */}
-          {(item.restaurant_id?.store_name || item.restaurant_name) && (
+          {(item.restaurant_id?.display_name || item.restaurant_id?.store_name || item.restaurant_name) && (
             <div style={{ color: '#10b981', fontSize: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span>🏪</span>
               <span style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                {item.restaurant_id?.store_name || item.restaurant_name}
+                {item.restaurant_id?.display_name || item.restaurant_id?.store_name || item.restaurant_name}
               </span>
             </div>
           )}
