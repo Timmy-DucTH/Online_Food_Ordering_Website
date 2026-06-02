@@ -97,7 +97,25 @@ exports.login = async (req, res) => {
       });
     }
 
-    // KIỂM TRA RÀNG BUỘC MỤC 3 & QĐ 4: Chặn tuyệt đối nếu tài khoản bị khóa do tụt điểm uy tín < 30
+    // KIỂM TRA TẠM KHÓA CÓ THỜI HẠN
+    if (user.banned_until) {
+      if (new Date() < user.banned_until) {
+        // Vẫn đang trong thời gian bị khóa
+        const formattedDate = new Date(user.banned_until).toLocaleString('vi-VN');
+        return res.status(403).json({
+          status: 'fail',
+          message: `Tài khoản của bạn đã bị khóa tạm thời bởi Admin cho đến ${formattedDate}. Lý do: ${user.ban_reason || 'Không có lý do cụ thể'}`
+        });
+      } else {
+        // Hết thời hạn khóa -> Tự động kích hoạt lại
+        user.banned_until = null;
+        user.status = 'active';
+        user.ban_reason = '';
+        await user.save();
+      }
+    }
+
+    // KIỂM TRA RÀNG BUỘC MỤC 3 & QĐ 4: Chặn tuyệt đối nếu tài khoản bị khóa do tụt điểm uy tín < 30 hoặc bị khóa vĩnh viễn
     if (user.status === 'banned' || user.credit_score < 30) {
       // Đảm bảo đồng bộ trạng thái trong DB đề phòng có độ trễ dữ liệu
       if (user.status !== 'banned') {
@@ -107,7 +125,9 @@ exports.login = async (req, res) => {
       
       return res.status(403).json({
         status: 'fail',
-        message: `Tài khoản này đã bị khóa! Lý do: Chỉ số uy tín hiện tại (${user.credit_score} điểm) thấp hơn mức quy định (< 30 điểm).`
+        message: user.ban_reason 
+          ? `Tài khoản này đã bị khóa vĩnh viễn! Lý do: ${user.ban_reason}`
+          : `Tài khoản này đã bị khóa! Lý do: Chỉ số uy tín hiện tại (${user.credit_score} điểm) thấp hơn mức quy định (< 30 điểm).`
       });
     }
 

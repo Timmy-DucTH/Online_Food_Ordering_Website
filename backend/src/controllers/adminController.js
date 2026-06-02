@@ -2,12 +2,42 @@ const User = require('../models/user');
 const Food = require('../models/food');
 const Order = require('../models/order');
 const AccountLog = require('../models/accountLog');
+const Notification = require('../models/notification');
+const Restaurant = require('../models/restaurant');
 
 // 1. Lấy danh sách tất cả người dùng
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password').sort({ createdAt: -1 });
-    res.status(200).json({ status: 'success', users });
+    
+    // Quét và tự động mở khóa các tài khoản hết hạn khóa tạm thời
+    for (const u of users) {
+      if (u.banned_until && new Date() >= u.banned_until) {
+        u.banned_until = null;
+        u.status = 'active';
+        u.ban_reason = '';
+        await u.save();
+      }
+      
+      // Quét cảnh báo điểm thấp dưới 30
+      if (u.credit_score < 30) {
+        const exists = await Notification.findOne({
+          user_id: u._id,
+          title: 'Tài khoản bị khóa tự động do uy tín thấp'
+        });
+        if (!exists) {
+          await Notification.create({
+            user_id: u._id,
+            title: 'Tài khoản bị khóa tự động do uy tín thấp',
+            message: `Điểm uy tín của bạn hiện tại là ${u.credit_score} điểm, thấp hơn quy định cho phép (< 30 điểm). Hệ thống đã tự động khóa tài khoản của bạn.`,
+            type: 'system'
+          });
+        }
+      }
+    }
+
+    const updatedUsers = await User.find().select('-password').sort({ createdAt: -1 });
+    res.status(200).json({ status: 'success', users: updatedUsers });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -16,17 +46,47 @@ exports.getAllUsers = async (req, res) => {
 // 2. Khóa tài khoản người dùng
 exports.banUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, { status: 'banned' }, { new: true });
+    const { reason, duration } = req.body;
+    
+    let banned_until = null;
+    let durationText = 'vĩnh viễn';
+    
+    if (duration && duration !== 'permanent') {
+      const days = parseInt(duration, 10);
+      if (!isNaN(days)) {
+        banned_until = new Date();
+        banned_until.setDate(banned_until.getDate() + days);
+        durationText = `${days} ngày`;
+      }
+    }
+
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy người dùng!' });
+    if (user.role === 'admin') {
+      return res.status(400).json({ status: 'fail', message: 'Không thể khóa tài khoản quản trị viên!' });
+    }
+
+    user.status = 'banned';
+    user.banned_until = banned_until;
+    user.ban_reason = reason || 'Admin khóa tài khoản thủ công';
+    await user.save();
 
     await AccountLog.create({
       user_id: req.params.id,
       action_type: 'ban',
-      reason: 'Admin khóa tài khoản thủ công',
+      reason: `${reason || 'Admin khóa tài khoản'} (Thời hạn: ${durationText})`,
       performed_by: 'ADMIN_PANEL'
     });
 
-    res.status(200).json({ status: 'success', message: `Đã khóa tài khoản ${user.email} thành công!` });
+    // Gửi thông báo cho user
+    await Notification.create({
+      user_id: req.params.id,
+      title: `Tài khoản của bạn đã bị khóa (${durationText})`,
+      message: `Tài khoản của bạn đã bị quản trị viên khóa (${durationText}). Lý do: ${reason || 'Không có lý do cụ thể'}${banned_until ? `. Thời gian tự động mở khóa: ${banned_until.toLocaleString('vi-VN')}` : ''}`,
+      type: 'system'
+    });
+
+    res.status(200).json({ status: 'success', message: `Đã khóa tài khoản ${user.email} (${durationText}) thành công!` });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -122,8 +182,24 @@ exports.addFood = async (req, res) => {
 // 7. Xóa món ăn
 exports.deleteFood = async (req, res) => {
   try {
-    const food = await Food.findByIdAndDelete(req.params.id);
+    const { reason } = req.body;
+    const food = await Food.findById(req.params.id);
     if (!food) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy món ăn!' });
+
+    // Gửi thông báo cho chủ cửa hàng nếu món ăn thuộc về cửa hàng
+    if (food.restaurant_id) {
+      const restaurantObj = await Restaurant.findById(food.restaurant_id);
+      if (restaurantObj && restaurantObj.owner_id) {
+        await Notification.create({
+          user_id: restaurantObj.owner_id,
+          title: 'Món ăn bị gỡ bỏ bởi quản trị viên',
+          message: `Món ăn "${food.name}" của bạn đã bị gỡ bỏ bởi admin. Lý do: ${reason || 'Không có lý do cụ thể'}`,
+          type: 'system'
+        });
+      }
+    }
+
+    await Food.findByIdAndDelete(req.params.id);
     res.status(200).json({ status: 'success', message: 'Đã xóa món ăn thành công!' });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
@@ -169,6 +245,19 @@ exports.updateOrderStatus = async (req, res) => {
       if (userCheck && userCheck.credit_score < 30) {
         userCheck.status = 'banned';
         await userCheck.save();
+
+        const exists = await Notification.findOne({
+          user_id: order.creator_id,
+          title: 'Tài khoản bị khóa tự động do uy tín thấp'
+        });
+        if (!exists) {
+          await Notification.create({
+            user_id: order.creator_id,
+            title: 'Tài khoản bị khóa tự động do uy tín thấp',
+            message: `Điểm uy tín của bạn hiện tại là ${userCheck.credit_score} điểm, thấp hơn quy định cho phép (< 30 điểm). Hệ thống đã tự động khóa tài khoản của bạn.`,
+            type: 'system'
+          });
+        }
       }
     }
 

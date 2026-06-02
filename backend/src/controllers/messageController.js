@@ -14,11 +14,8 @@ exports.sendMessage = async (req, res) => {
       return res.status(400).json({ status: 'fail', message: 'Thiếu thông tin người nhận hoặc nội dung!' });
     }
 
-    // Kiểm tra quyền nhắn tin: Chỉ cho phép nhắn tin với tài khoản ảo hoặc người đã liên hệ hoặc có liên kết qua đơn hàng
-    let isAllowed = false;
-
-    // 1. Cho phép nhắn với các tài khoản giả lập/hỗ trợ hệ thống (Không lưu vào DB do là liên hệ ảo)
-    if (receiver_id === 'system_default_1' || receiver_id === 'driver_default_1' || receiver_id === 'store_default_1') {
+    // 1. Cho phép nhắn với các tài khoản giả lập/hỗ trợ hệ thống ảo (chỉ shipper và store)
+    if (receiver_id === 'driver_default_1' || receiver_id === 'store_default_1') {
       return res.status(201).json({
         status: 'success',
         data: {
@@ -30,12 +27,33 @@ exports.sendMessage = async (req, res) => {
       });
     }
 
+    let finalReceiverId = receiver_id;
+    if (receiver_id === 'system_default_1') {
+      const adminUser = await User.findOne({ role: 'admin' });
+      if (adminUser) {
+        finalReceiverId = adminUser._id;
+      } else {
+        return res.status(404).json({ status: 'fail', message: 'Hệ thống hiện tại chưa có Quản trị viên!' });
+      }
+    }
+
+    // Kiểm tra quyền nhắn tin
+    let isAllowed = false;
+
+    const sender = await User.findById(sender_id);
+    const receiver = await User.findById(finalReceiverId);
+
+    // Bất kỳ người dùng nào cũng được phép chat với Admin, và Admin được chat với bất kỳ ai
+    if (sender && (sender.role === 'admin' || (receiver && receiver.role === 'admin'))) {
+      isAllowed = true;
+    }
+
     // 2. Kiểm tra nếu đã từng có tin nhắn qua lại trong quá khứ
     if (!isAllowed) {
       const alreadyMessaged = await Message.exists({
         $or: [
-          { sender_id, receiver_id },
-          { sender_id: receiver_id, receiver_id: sender_id }
+          { sender_id, receiver_id: finalReceiverId },
+          { sender_id: finalReceiverId, receiver_id: sender_id }
         ]
       });
       if (alreadyMessaged) isAllowed = true;
@@ -43,13 +61,10 @@ exports.sendMessage = async (req, res) => {
 
     // 3. Kiểm tra liên kết từ đơn hàng thực tế (Customer <-> Merchant)
     if (!isAllowed) {
-      const sender = await User.findById(sender_id);
-      const receiver = await User.findById(receiver_id);
-
       if (sender && receiver) {
         if (sender.role === 'customer' && receiver.role === 'merchant') {
           // Khách gửi cho chủ quán: Tìm các nhà hàng của chủ quán này
-          const merchantRestaurants = await Restaurant.find({ owner_id: receiver_id }).select('_id');
+          const merchantRestaurants = await Restaurant.find({ owner_id: finalReceiverId }).select('_id');
           const restaurantIds = merchantRestaurants.map(r => r._id);
           if (restaurantIds.length > 0) {
             // Xem khách hàng đã từng đặt đơn tại các nhà hàng này chưa
@@ -66,7 +81,7 @@ exports.sendMessage = async (req, res) => {
             // Xem đơn hàng của khách hàng tại các nhà hàng này có tồn tại không
             isAllowed = await Order.exists({
               store_id: { $in: restaurantIds },
-              $or: [{ creator_id: receiver_id }, { members: receiver_id }]
+              $or: [{ creator_id: finalReceiverId }, { members: finalReceiverId }]
             });
           }
         }
@@ -82,18 +97,16 @@ exports.sendMessage = async (req, res) => {
 
     const newMessage = new Message({
       sender_id,
-      receiver_id,
+      receiver_id: finalReceiverId,
       content
     });
 
     await newMessage.save();
 
-    // Optionally create a notification for the receiver
-    // Don't error out if it fails
+    // Gửi thông báo cho người nhận
     try {
-      const sender = await User.findById(sender_id);
       const notify = new Notification({
-        user_id: receiver_id,
+        user_id: finalReceiverId,
         title: `Tin nhắn mới từ ${sender ? sender.full_name : 'Người dùng'}`,
         message: content.length > 50 ? `${content.substring(0, 47)}...` : content,
         type: 'system',
@@ -117,7 +130,14 @@ exports.sendMessage = async (req, res) => {
 exports.getMessages = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { otherUserId } = req.params;
+    let { otherUserId } = req.params;
+
+    if (otherUserId === 'system_default_1') {
+      const adminUser = await User.findOne({ role: 'admin' });
+      if (adminUser) {
+        otherUserId = adminUser._id;
+      }
+    }
 
     const messages = await Message.find({
       $or: [
@@ -157,6 +177,33 @@ exports.getChatUsers = async (req, res) => {
       if (senderStr !== userId) contactedIds.add(senderStr);
       if (receiverStr !== userId) contactedIds.add(receiverStr);
     });
+
+    // Nếu người dùng hiện tại là Admin, họ chỉ cần hiển thị danh sách những người đã từng liên hệ hỗ trợ
+    if (currentUser.role === 'admin') {
+      const users = await User.find({
+        _id: { $in: Array.from(contactedIds) }
+      }).select('full_name email role');
+      
+      const enrichedUsers = [];
+      for (const u of users) {
+        const lastMsg = await Message.findOne({
+          $or: [
+            { sender_id: userId, receiver_id: u._id },
+            { sender_id: u._id, receiver_id: userId }
+          ]
+        }).sort({ createdAt: -1 });
+        
+        const userObj = u.toObject();
+        userObj.lastMessage = lastMsg;
+        userObj.needsReply = lastMsg && lastMsg.sender_id.toString() === u._id.toString();
+        enrichedUsers.push(userObj);
+      }
+      
+      return res.status(200).json({
+        status: 'success',
+        data: enrichedUsers
+      });
+    }
 
     // 2. Lấy ID liên hệ dựa trên lịch sử đơn hàng (Customer <-> Merchant)
     const orderContactIds = new Set();
@@ -211,7 +258,7 @@ exports.getChatUsers = async (req, res) => {
       full_name: '🛡️ Hệ thống TasteByte',
       email: 'system@tastebyte.vn',
       role: 'system',
-      isVirtual: true
+      isVirtual: false // Set to false to trigger real database APIs
     };
 
     const virtualContacts = [

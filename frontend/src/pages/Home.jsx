@@ -39,6 +39,7 @@ const Home = () => {
   const [selectedContact, setSelectedContact] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState('');
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [virtualMessages, setVirtualMessages] = useState({
     'system_default_1': [
       { sender_id: 'system_default_1', receiver_id: 'me', content: 'Xin chào! Đây là kênh Hỗ trợ & Phản hồi tự động của Hệ thống TasteByte. Hãy để lại tin nhắn nếu bạn cần trợ giúp nhé!', createdAt: new Date(Date.now() - 1800000).toISOString() }
@@ -108,12 +109,11 @@ const Home = () => {
             full_name: '🛡️ Hệ thống TasteByte',
             email: 'system@tastebyte.vn',
             role: 'system',
-            isVirtual: true
+            isVirtual: false
           };
           setSelectedContact(systemContact);
-          setChatMessages(virtualMessages['system_default_1'] || [
-            { sender_id: 'system_default_1', receiver_id: 'me', content: 'Xin chào! Đây là kênh Hỗ trợ & Phản hồi tự động của Hệ thống TasteByte. Hãy để lại tin nhắn nếu bạn cần trợ giúp nhé!', createdAt: new Date().toISOString() }
-          ]);
+          setChatMessages([]);
+          fetchMessages('system_default_1');
         }
       }
       // Clear location state to prevent running on every render/reload
@@ -166,7 +166,24 @@ const Home = () => {
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success') {
-          setChatContacts(data.data);
+          const otherContacts = data.data.filter(c => c._id !== 'system_default_1');
+          const systemContact = data.data.find(c => c._id === 'system_default_1') || {
+            _id: 'system_default_1',
+            full_name: '🛡️ Hệ thống TasteByte',
+            email: 'system@tastebyte.vn',
+            role: 'system',
+            isVirtual: false
+          };
+          
+          systemContact.isVirtual = false;
+          const contactList = [systemContact, ...otherContacts];
+          setChatContacts(contactList);
+          
+          if (!selectedContact) {
+            setSelectedContact(systemContact);
+            setChatMessages([]);
+            fetchMessages('system_default_1');
+          }
         }
       })
       .catch(err => console.error('Error fetching contacts:', err));
@@ -861,11 +878,40 @@ const Home = () => {
               {/* Chat - Left Pane: Contact list */}
               <div style={{ width: '35%', borderRight: '1px solid #1f2937', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '14px', borderBottom: '1px solid #1f2937', fontWeight: 'bold', color: '#00e676', fontSize: '15px' }}>Hội thoại</div>
+                
+                {/* 🔍 Search box (matching email/username only) */}
+                <div style={{ padding: '10px 14px', borderBottom: '1px solid #1f2937' }}>
+                  <input
+                    type="text"
+                    placeholder="Tìm theo username (email)..."
+                    value={chatSearchQuery}
+                    onChange={(e) => setChatSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: '#0b0f19',
+                      border: '1px solid #1f2937',
+                      borderRadius: '6px',
+                      color: '#f1f5f9',
+                      fontSize: '12px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
                 <div style={{ flex: 1, overflowY: 'auto' }}>
-                  {chatContacts.length === 0 ? (
-                    <div style={{ padding: '20px', color: '#64748b', fontSize: '13px', textAlign: 'center' }}>Không tìm thấy người liên lạc.</div>
-                  ) : (
-                    chatContacts.map(c => {
+                  {(() => {
+                    const filteredContacts = chatContacts.filter(c => {
+                      if (!chatSearchQuery.trim()) return true;
+                      return c.email && c.email.toLowerCase().includes(chatSearchQuery.toLowerCase());
+                    });
+                    
+                    if (filteredContacts.length === 0) {
+                      return <div style={{ padding: '20px', color: '#64748b', fontSize: '13px', textAlign: 'center' }}>Không tìm thấy người liên lạc.</div>;
+                    }
+                    
+                    return filteredContacts.map(c => {
                       const isActive = selectedContact && selectedContact._id === c._id;
                       return (
                         <div
@@ -893,8 +939,8 @@ const Home = () => {
                           </div>
                         </div>
                       );
-                    })
-                  )}
+                    });
+                  })()}
                 </div>
               </div>
 
