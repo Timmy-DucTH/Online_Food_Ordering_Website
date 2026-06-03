@@ -1996,8 +1996,8 @@ const Home = () => {
               padding: '24px', borderRadius: '16px', maxWidth: '480px', width: '90%',
               boxShadow: `0 15px 40px ${currentTheme.shadow}`, color: currentTheme.text
             }}>
-              <h3 style={{ color: currentTheme.primary, fontSize: '20px', margin: '0 0 16px 0', fontWeight: '800', textAlign: 'center' }}>
-                📊 BẢNG CHIA TIỀN HÓA ĐƠN NHÓM
+              <h3 style={{ color: currentTheme.primary, fontSize: '20px', margin: '0 0 16px 0', fontWeight: '800', textAlign: 'center', fontFamily: vietnameseTextFont, lineHeight: 1.25, letterSpacing: 0 }}>
+                <span style={{ fontFamily: emojiTextFont, lineHeight: 1 }}>📊</span> BẢNG CHIA TIỀN HÓA ĐƠN NHÓM
               </h3>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
