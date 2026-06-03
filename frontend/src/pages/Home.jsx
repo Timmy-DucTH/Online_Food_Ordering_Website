@@ -1994,7 +1994,8 @@ const Home = () => {
             <div style={{
               backgroundColor: currentTheme.panel, border: `1.5px solid ${currentTheme.border}`,
               padding: '24px', borderRadius: '16px', maxWidth: '480px', width: '90%',
-              boxShadow: `0 15px 40px ${currentTheme.shadow}`, color: currentTheme.text
+              boxShadow: `0 15px 40px ${currentTheme.shadow}`, color: currentTheme.text,
+              fontFamily: vietnameseTextFont, lineHeight: 1.35, letterSpacing: 0
             }}>
               <h3 style={{ color: currentTheme.primary, fontSize: '20px', margin: '0 0 16px 0', fontWeight: '800', textAlign: 'center', fontFamily: vietnameseTextFont, lineHeight: 1.25, letterSpacing: 0 }}>
                 <span style={{ fontFamily: emojiTextFont, lineHeight: 1 }}>📊</span> BẢNG CHIA TIỀN HÓA ĐƠN NHÓM
@@ -2011,7 +2012,7 @@ const Home = () => {
                     <div style={{ textAlign: 'right', fontSize: '12px' }}>
                       <div>Món ăn: <span style={{ fontWeight: 'bold' }}>{member.itemsTotal.toLocaleString()}đ</span></div>
                       <div style={{ color: currentTheme.textMuted }}>Ship chia: <span style={{ fontWeight: 'bold' }}>{member.shipShare.toLocaleString()}đ</span></div>
-                      <div style={{ color: currentTheme.primary, fontWeight: '800', fontSize: '13px', marginTop: '2px' }}>Cộng: {member.total.toLocaleString()}đ</div>
+                      <div style={{ color: currentTheme.primary, fontWeight: '800', fontSize: '13px', marginTop: '2px', fontFamily: vietnameseTextFont, lineHeight: 1.35, letterSpacing: 0 }}>Cộng: {member.total.toLocaleString()}đ</div>
                     </div>
                   </div>
                 ))}
@@ -2030,7 +2031,7 @@ const Home = () => {
                   <span>Phí ship chia đều:</span>
                   <span>{bill.shippingFee.toLocaleString()}đ</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '900', color: currentTheme.primary, marginTop: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '900', color: currentTheme.primary, marginTop: '6px', fontFamily: vietnameseTextFont, lineHeight: 1.35, letterSpacing: 0 }}>
                   <span>Tổng tiền thanh toán cả nhóm:</span>
                   <span>{bill.totalPrice.toLocaleString()}đ</span>
                 </div>
@@ -2040,15 +2041,15 @@ const Home = () => {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button 
                   onClick={() => setShowSplitBillModal(false)}
-                  style={{ flex: 1, padding: '12px 0', backgroundColor: currentTheme.bg, color: currentTheme.text, border: `1.5px solid ${currentTheme.border}`, borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}
+                  style={{ flex: 1, padding: '12px 0', backgroundColor: currentTheme.bg, color: currentTheme.text, border: `1.5px solid ${currentTheme.border}`, borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontFamily: vietnameseTextFont, lineHeight: 1.2, letterSpacing: 0 }}
                 >
                   Quay lại
                 </button>
                 <button 
                   onClick={handleGroupCheckoutSubmit}
-                  style={{ flex: 1, padding: '12px 0', background: currentTheme.primaryGradient, color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}` }}
+                  style={{ flex: 1, padding: '12px 0', background: currentTheme.primaryGradient, color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}`, fontFamily: vietnameseTextFont, lineHeight: 1.2, letterSpacing: 0 }}
                 >
-                  Đặt đơn nhóm 🚀
+                  Đặt đơn nhóm <span style={{ fontFamily: emojiTextFont, lineHeight: 1 }}>🚀</span>
                 </button>
               </div>
             </div>
