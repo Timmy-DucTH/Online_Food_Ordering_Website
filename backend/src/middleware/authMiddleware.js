@@ -12,7 +12,7 @@ const verifyToken = (req, res, next) => {
 
   try {
     // Giải mã mã hóa token bằng JWT_SECRET của bạn
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'SECRET_KEY_CUA_BAN');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'OFOW_DO_AN_CONG_NGHE_PHAN_MEM_NHOM_8_2026');
     
     // Lưu thông tin user giải mã được (id, role,...) vào đối tượng req để các hàm sau sử dụng
     req.user = decoded; 

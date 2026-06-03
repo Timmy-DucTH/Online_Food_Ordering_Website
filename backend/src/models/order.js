@@ -122,6 +122,20 @@ const OrderSchema = new mongoose.Schema({
   note: {
     type: String,
     trim: true
+  },
+
+  // Các trường mốc thời gian phục vụ tính điểm uy tín trễ hạn (QĐ 3)
+  confirmedAt: {
+    type: Date,
+    default: null
+  },
+  shippingAt: {
+    type: Date,
+    default: null
+  },
+  completedAt: {
+    type: Date,
+    default: null
   }
 }, {
   // Tự động lưu thời gian tạo đơn hàng (createdAt) phục vụ cho tính năng Báo cáo Doanh thu theo ngày/tháng (QĐ 10)

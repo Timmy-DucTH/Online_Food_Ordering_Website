@@ -15,7 +15,7 @@ const sanitizeResponseUserNames = (req, res, next) => {
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1];
         try {
-          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'OFOW_SUPER_SECRET_KEY');
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'OFOW_DO_AN_CONG_NGHE_PHAN_MEM_NHOM_8_2026');
           if (decoded && decoded.role === 'admin') {
             isAdmin = true;
           }

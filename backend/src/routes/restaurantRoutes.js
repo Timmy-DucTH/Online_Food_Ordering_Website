@@ -17,8 +17,6 @@ router.put('/foods/:id', verifyToken, restCtrl.updateMerchantFood);
 router.get('/my-orders', verifyToken, restCtrl.getMyOrders);
 
 // Legacy/Internal routes
-router.patch('/:restaurantId/approve', restCtrl.approveRestaurant);
-router.post('/:restaurantId/menu/item', restCtrl.addMenuItem);
-router.patch('/:restaurantId/menu/item/:itemId/status', restCtrl.toggleItemAvailability);
+// (Unused insecure routes removed)
 
 module.exports = router;

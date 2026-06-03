@@ -3,6 +3,33 @@ const Order = require('../models/order');
 const User = require('../models/user');
 const Restaurant = require('../models/restaurant');
 
+// Helper tự động khóa tài khoản dưới 7 ngày nếu điểm uy tín tụt dưới 30đ (QĐ 4)
+const checkAndBanUser = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    if (user && user.credit_score < 30 && user.status !== 'banned') {
+      user.status = 'banned';
+      user.ban_reason = `Điểm uy tín tụt xuống mức cảnh báo: ${user.credit_score} điểm (< 30 điểm).`;
+      
+      // Khóa tài khoản tạm thời dưới 7 ngày
+      const bannedUntil = new Date();
+      bannedUntil.setDate(bannedUntil.getDate() + 7);
+      user.banned_until = bannedUntil;
+      await user.save();
+
+      const Notification = require('../models/notification');
+      await Notification.create({
+        user_id: userId,
+        title: 'Tài khoản bị khóa tự động do uy tín thấp',
+        message: `Điểm uy tín của bạn hiện tại là ${user.credit_score} điểm, thấp hơn quy định cho phép (< 30 điểm). Hệ thống đã tự động khóa tài khoản của bạn trong 7 ngày.`,
+        type: 'system'
+      });
+    }
+  } catch (e) {
+    console.error('Error auto-banning user:', e.message);
+  }
+};
+
 // NGHIỆP VỤ 4: Khởi tạo/Lập đơn hàng cá nhân hoặc đơn hàng nhóm (BM5, BM6, QĐ6, QĐ7, QĐ8)
 exports.createOrder = async (req, res) => {
   try {
@@ -116,47 +143,98 @@ exports.updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status, reason } = req.body; // 'completed', 'cancelled',...
+    const Notification = require('../models/notification');
 
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy mã đơn hàng này!' });
     }
 
+    const oldStatus = order.status;
     order.status = status;
-    await order.save();
 
-    // TỰ ĐỘNG ĐÁNH GIÁ CHỈ SỐ UY TÍN DỰA TRÊN TRẠNG THÁI CUỐI CỦA ĐƠN HÀNG (QĐ 3)
-    if (status === 'completed') {
-      // Hoàn thành đơn hàng: Cộng 1 điểm uy tín cho cả khách và chủ quán
-      await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: 1 } });
-      const rest = await Restaurant.findById(order.store_id);
-      if (rest) await User.findByIdAndUpdate(rest.owner_id, { $inc: { credit_score: 1 } });
-    } 
-    else if (status === 'cancelled' && reason === 'Đơn ảo/Hủy không lý do') {
-      // Khách hàng hủy đơn không lý do hoặc tạo đơn ảo: Trừ nặng 5 điểm uy tín
-      await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: -5 } });
+    // Cập nhật các trường mốc thời gian và tính điểm trễ hạn
+    if (status === 'preparing' && oldStatus !== 'preparing') {
+      order.confirmedAt = Date.now();
       
-      // HỆ THỐNG TỰ ĐỘNG KHÓA TÀI KHOẢN (QĐ 4): Kiểm tra xem điểm uy tín có bị tụt xuống dưới 30 điểm không
-      const userCheck = await User.findById(order.creator_id);
-      if (userCheck && userCheck.credit_score < 30) {
-        userCheck.status = 'banned';
-        await userCheck.save();
-
-        const Notification = require('../models/notification');
-        const exists = await Notification.findOne({
-          user_id: order.creator_id,
-          title: 'Tài khoản bị khóa tự động do uy tín thấp'
-        });
-        if (!exists) {
+      // Tính độ trễ xác nhận từ lúc tạo đơn
+      const diffMin = Math.floor((Date.now() - order.createdAt) / 60000);
+      if (diffMin > 15) {
+        const deduct = Math.min(15, diffMin - 15);
+        const rest = await Restaurant.findById(order.store_id);
+        if (rest) {
+          await User.findByIdAndUpdate(rest.owner_id, { $inc: { credit_score: -deduct } });
           await Notification.create({
-            user_id: order.creator_id,
-            title: 'Tài khoản bị khóa tự động do uy tín thấp',
-            message: `Điểm uy tín của bạn hiện tại là ${userCheck.credit_score} điểm, thấp hơn quy định cho phép (< 30 điểm). Hệ thống đã tự động khóa tài khoản của bạn.`,
+            user_id: rest.owner_id,
+            title: 'Trừ điểm uy tín do xác nhận trễ',
+            message: `Cửa hàng của bạn xác nhận đơn trễ ${diffMin} phút. Hệ thống tự động trừ ${deduct} điểm uy tín.`,
             type: 'system'
           });
+          
+          // Auto ban check
+          await checkAndBanUser(rest.owner_id);
+        }
+      }
+    } 
+    else if (status === 'shipping' && oldStatus !== 'shipping') {
+      order.shippingAt = Date.now();
+
+      // Tính độ trễ chuẩn bị từ lúc xác nhận (nếu có)
+      if (order.confirmedAt) {
+        const diffMin = Math.floor((Date.now() - order.confirmedAt) / 60000);
+        if (diffMin > 15) {
+          const deduct = Math.min(15, diffMin - 15);
+          const rest = await Restaurant.findById(order.store_id);
+          if (rest) {
+            await User.findByIdAndUpdate(rest.owner_id, { $inc: { credit_score: -deduct } });
+            await Notification.create({
+              user_id: rest.owner_id,
+              title: 'Trừ điểm uy tín do chuẩn bị trễ',
+              message: `Cửa hàng của bạn chuẩn bị món ăn trễ ${diffMin} phút. Hệ thống tự động trừ ${deduct} điểm uy tín.`,
+              type: 'system'
+            });
+
+            // Auto ban check
+            await checkAndBanUser(rest.owner_id);
+          }
         }
       }
     }
+    else if (status === 'completed' && oldStatus !== 'completed') {
+      order.completedAt = Date.now();
+
+      // Tính độ trễ nhận hàng của khách từ lúc bắt đầu giao (shippingAt)
+      if (order.shippingAt) {
+        const diffMin = Math.floor((Date.now() - order.shippingAt) / 60000);
+        if (diffMin > 15) {
+          const deduct = Math.min(15, diffMin - 15);
+          await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: -deduct } });
+          await Notification.create({
+            user_id: order.creator_id,
+            title: 'Trừ điểm uy tín do nhận hàng trễ',
+            message: `Bạn nhận hàng trễ hẹn ${diffMin} phút từ lúc shipper giao đến. Hệ thống tự động trừ ${deduct} điểm uy tín.`,
+            type: 'system'
+          });
+
+          // Auto ban check
+          await checkAndBanUser(order.creator_id);
+        }
+      }
+
+      // Cộng 1 điểm uy tín cho cả khách và chủ quán khi hoàn thành đơn (QĐ 3)
+      await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: 1 } });
+      const rest = await Restaurant.findById(order.store_id);
+      if (rest) {
+        await User.findByIdAndUpdate(rest.owner_id, { $inc: { credit_score: 1 } });
+      }
+    }
+    else if (status === 'cancelled' && reason === 'Đơn ảo/Hủy không lý do') {
+      // Khách hàng hủy đơn không lý do hoặc tạo đơn ảo: Trừ nặng 5 điểm uy tín
+      await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: -5 } });
+      await checkAndBanUser(order.creator_id);
+    }
+
+    await order.save();
 
     res.status(200).json({
       status: 'success',

@@ -3,7 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 const ProtectedRoute = ({ allowedRoles }) => {
   const token = localStorage.getItem('token');
   // Lấy role được lưu ở localStorage lúc đăng nhập thành công
-  const userRole = localStorage.getItem('userRole'); 
+  const userRole = localStorage.getItem('role') || localStorage.getItem('userRole'); 
 
   // Nếu chưa đăng nhập, đá về trang Login
   if (!token) {

@@ -1,7 +1,45 @@
 const Restaurant = require('../models/restaurant');
-const Menu = require('../models/menu');
 const User = require('../models/user');
 const Food = require('../models/food');
+
+// Hàm kiểm tra dung lượng ảnh (không quá 2MB theo QĐ 5)
+const validateImageSize = async (imageStr) => {
+  if (!imageStr) return true;
+  
+  // 1. Kiểm tra ảnh dạng base64
+  if (imageStr.startsWith('data:image')) {
+    const approxSize = (imageStr.length * 3) / 4;
+    return approxSize <= 2 * 1024 * 1024; // 2MB
+  }
+  
+  // 2. Kiểm tra ảnh dạng URL
+  if (imageStr.startsWith('http://') || imageStr.startsWith('https://')) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch(imageStr, { 
+        method: 'HEAD', 
+        signal: controller.signal 
+      });
+      
+      clearTimeout(timeoutId);
+      
+      const contentLength = response.headers.get('content-length');
+      if (contentLength) {
+        const sizeBytes = parseInt(contentLength, 10);
+        if (!isNaN(sizeBytes)) {
+          return sizeBytes <= 2 * 1024 * 1024; // 2MB
+        }
+      }
+    } catch (e) {
+      // Khi không fetch được hoặc mất mạng, ta bỏ qua để tránh block người dùng
+      return true;
+    }
+  }
+  return true;
+};
+
 
 // Đăng ký hồ sơ Cửa hàng mới (Merchant gửi yêu cầu)
 exports.registerRestaurant = async (req, res) => {
@@ -92,13 +130,9 @@ exports.approveRestaurant = async (req, res) => {
     restaurant.status = status;
     await restaurant.save();
 
-    // Nếu được duyệt, tự động nâng cấp phân quyền người dùng lên 'merchant' và tạo Thực đơn trống
+    // Nếu được duyệt, tự động nâng cấp phân quyền người dùng lên 'merchant'
     if (status === 'approved') {
       await User.findByIdAndUpdate(restaurant.owner_id, { role: 'merchant' });
-      const existingMenu = await Menu.findOne({ store_id: restaurantId });
-      if (!existingMenu) {
-        await Menu.create({ store_id: restaurantId, items: [] });
-      }
     } else if (status === 'rejected') {
       // Nếu từ chối, đảm bảo hạ quyền xuống 'customer'
       await User.findByIdAndUpdate(restaurant.owner_id, { role: 'customer' });
@@ -126,6 +160,15 @@ exports.addMerchantFood = async (req, res) => {
     const { name, price, category, image, description } = req.body;
     if (!price || price <= 0) {
       return res.status(400).json({ status: 'fail', message: 'Đơn giá món ăn phải lớn hơn 0!' });
+    }
+
+    // Kiểm định dung lượng hình ảnh món ăn không vượt quá 2MB (QĐ 5)
+    const isImageSizeOk = await validateImageSize(image);
+    if (!isImageSizeOk) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Hình ảnh món ăn có dung lượng vượt quá giới hạn 2 MB cho phép!'
+      });
     }
 
     const food = await Food.create({
@@ -165,64 +208,7 @@ exports.getMyFoods = async (req, res) => {
   }
 };
 
-// Các hàm nghiệp vụ cũ dự phòng (thêm trực tiếp vào menu nhúng)
-exports.addMenuItem = async (req, res) => {
-  try {
-    const { restaurantId } = req.params;
-    const { name, image, price, category } = req.body;
-
-    if (!price || price <= 0) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Quy định hệ thống: Đơn giá món ăn nhập vào phải lớn hơn 0đ!'
-      });
-    }
-
-    const menu = await Menu.findOne({ store_id: restaurantId });
-    if (!menu) {
-      return res.status(404).json({ status: 'fail', message: 'Nhà hàng này chưa được tạo thực đơn!' });
-    }
-
-    menu.items.push({ name, image, price, category, is_available: true });
-    await menu.save();
-
-    res.status(201).json({
-      status: 'success',
-      message: '➕ Thêm món ăn vào thực đơn thành công!',
-      data: menu
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-};
-
-exports.toggleItemAvailability = async (req, res) => {
-  try {
-    const { restaurantId, itemId } = req.params;
-    const { is_available } = req.body;
-
-    const menu = await Menu.findOne({ store_id: restaurantId });
-    if (!menu) {
-      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy thực đơn!' });
-    }
-
-    const item = menu.items.id(itemId);
-    if (!item) {
-      return res.status(404).json({ status: 'fail', message: 'Món ăn không tồn tại trong thực đơn!' });
-    }
-
-    item.is_available = is_available;
-    await menu.save();
-
-    res.status(200).json({
-      status: 'success',
-      message: `Đã cập nhật trạng thái món ăn thành: ${is_available ? 'Còn món' : 'Hết món'}`,
-      data: item
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-};
+// Các hàm nghiệp vụ cũ dư thừa đã được loại bỏ để dọn dẹp codebase
 
 // Merchant lấy danh sách đơn đặt hàng tại cửa hàng của họ
 exports.getMyOrders = async (req, res) => {
@@ -320,6 +306,17 @@ exports.updateMerchantFood = async (req, res) => {
     const { name, price, category, image, description } = req.body;
     if (price !== undefined && price <= 0) {
       return res.status(400).json({ status: 'fail', message: 'Đơn giá món ăn phải lớn hơn 0!' });
+    }
+
+    if (image) {
+      // Kiểm định dung lượng hình ảnh món ăn không vượt quá 2MB (QĐ 5)
+      const isImageSizeOk = await validateImageSize(image);
+      if (!isImageSizeOk) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Hình ảnh món ăn có dung lượng vượt quá giới hạn 2 MB cho phép!'
+        });
+      }
     }
 
     const food = await Food.findOneAndUpdate(

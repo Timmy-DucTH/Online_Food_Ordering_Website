@@ -17,6 +17,28 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
+// Tự động xử lý khi Token hết hạn, không hợp lệ hoặc tài khoản không còn tồn tại trong Database
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      const { status, data } = error.response;
+      const errorMsg = data?.message || '';
+      if (
+        status === 401 || 
+        status === 403 || 
+        (status === 404 && (errorMsg.includes('không tồn tại') || errorMsg.includes('Not Found')))
+      ) {
+        if (localStorage.getItem('token')) {
+          localStorage.clear();
+          window.location.href = '/login';
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Định nghĩa hàm gọi API Đăng ký và Đăng nhập
 export const registerUser = (userData) => API.post('/auth/register', userData);
 export const loginUser = (credentials) => API.post('/auth/login', credentials);
