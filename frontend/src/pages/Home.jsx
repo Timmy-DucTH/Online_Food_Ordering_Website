@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FoodCard from '../components/FoodCard';
 
-const CATEGORIES = ['Tất cả', 'Burger', 'Pizza', 'Cơm', 'Mì & Phở', 'Đồ uống', 'Tráng miệng', 'Khác'];
+const CATEGORIES = ['Tất cả', 'Burger', 'Pizza', 'Cơm', 'Món nước', 'Trà sữa', 'Cà phê', 'Tráng miệng', 'Đồ ăn nhanh', 'Đồ uống khác', 'Khác'];
 const initialVirtualMessages = {
   'driver_default_1': [
     { sender_id: 'driver_default_1', receiver_id: 'me', content: 'Chào bạn, mình là shipper Hùng, lát nữa giao đồ ăn mình sẽ gọi điện nhé!', createdAt: new Date(Date.now() - 3600000).toISOString() }

@@ -103,12 +103,12 @@ const FoodDetailModal = ({ food, onClose, addToCart, handleBuyNow }) => {
                   <span>{restaurant.address}</span>
                 </div>
               )}
-              {restaurant.merchant_name && (
+              {/* restaurant.merchant_name && (
                 <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px', display: 'flex', gap: '6px' }}>
                   <span>👤</span>
                   <span>Chủ quán: {restaurant.merchant_name}</span>
                 </div>
-              )}
+              ) */}
             </div>
           )}
 

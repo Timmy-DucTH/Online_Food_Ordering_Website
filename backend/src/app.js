@@ -17,6 +17,10 @@ app.use(express.json());
 // express.urlencoded(): Giúp xử lý dữ liệu gửi lên từ các form HTML truyền thống.
 app.use(express.urlencoded({ extended: true }));
 
+// Ràng buộc bảo mật: Ẩn họ tên, chỉ hiện username cho các tài khoản không phải Admin
+const userSanitizer = require('./middleware/userSanitizer');
+app.use(userSanitizer);
+
 
 // 2. KHAI BÁO CÁC ĐƯỜNG DẪN API (ROUTES)
 
