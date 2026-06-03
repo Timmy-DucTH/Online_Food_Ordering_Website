@@ -1007,6 +1007,7 @@ const Restaurant = ({ openPendingModal }) => {
                 </div>
               </div>
             )}
+            <br></br>
             {activeTab === 'reviews' && (
               <ReviewSection restaurantId={shopData?._id} />
             )}
