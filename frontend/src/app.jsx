@@ -44,9 +44,9 @@ function App() {
         <Route path="/register" element={<RegisterLogin setIsLoggedIn={setIsLoggedIn} />} />
         
         <Route path="/profile" element={<Profile isLoggedIn={isLoggedIn} openPendingModal={openPendingModal} />} /> 
-        <Route path="/restaurant" element={<Restaurant />} /> 
+        <Route path="/restaurant" element={<Restaurant openPendingModal={openPendingModal} />} /> 
         
-        <Route path="/restaurant/onboarding" element={<RestaurantOnboarding />} /> 
+        <Route path="/restaurant/onboarding" element={<RestaurantOnboarding openPendingModal={openPendingModal} />} /> 
         <Route path="/checkout" element={<Checkout />} />
         
         {/* 👑 TUYẾN ĐƯỜNG ADMIN - ĐÃ ĐƯỢC BẢO MẬT CHẶN TRUY CẬP TRÁI PHÉP */}
@@ -63,14 +63,75 @@ function App() {
 
       {/* MODAL THÔNG BÁO BẢO TRÌ TOÀN CỤC */}
       {showPendingModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '4px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
-            <div style={{ fontSize: '45px', marginBottom: '10px' }}>⚙️</div>
-            <h3 style={{ margin: '0 0 10px 0', color: '#2b4c7e', fontWeight: '600' }}>Thông Báo Hệ Thống</h3>
-            <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          width: '100%', 
+          height: '100%', 
+          backgroundColor: 'rgba(3, 7, 18, 0.85)', 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          zIndex: 99999, 
+          backdropFilter: 'blur(6px)' 
+        }}>
+          <div style={{ 
+            backgroundColor: '#111827', 
+            border: '1.5px solid #10b981', 
+            padding: '35px', 
+            borderRadius: '16px', 
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 15px rgba(16, 185, 129, 0.1)', 
+            textAlign: 'center', 
+            maxWidth: '420px', 
+            width: '90%',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ 
+              fontSize: '54px', 
+              marginBottom: '15px',
+              animation: 'spin 12s linear infinite',
+              display: 'inline-block'
+            }}>⚙️</div>
+            <h3 style={{ 
+              margin: '0 0 12px 0', 
+              color: '#10b981', 
+              fontWeight: '800',
+              fontSize: '22px',
+              letterSpacing: '0.5px'
+            }}>Thông Báo Hệ Thống</h3>
+            <p style={{ 
+              color: '#94a3b8', 
+              fontSize: '14px', 
+              lineHeight: '1.7', 
+              margin: '0 0 28px 0',
+              fontWeight: '500' 
+            }}>
               Tính năng đang được đồng bộ dữ liệu Backend, vui lòng quay lại sau!
             </p>
-            <button onClick={closePendingModal} style={{ padding: '10px 40px', backgroundColor: '#2b4c7e', color: 'white', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>
+            <button 
+              onClick={closePendingModal} 
+              style={{ 
+                padding: '12px 45px', 
+                backgroundColor: '#10b981', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                fontWeight: 'bold', 
+                fontSize: '14px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = '#059669';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = '#10b981';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
               Xác nhận
             </button>
           </div>

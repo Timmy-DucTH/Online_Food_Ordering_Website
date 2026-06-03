@@ -1,19 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createOrderAPI } from '../services/api';
 
 const MOCK_FRIENDS = [
-  { id: '65bf80010000000000000001', name: 'Đỗ Duy Quang (Bạn)' },
-  { id: '65bf80010000000000000002', name: 'Nguyễn Đức Huy (Bạn)' },
-  { id: '65bf80010000000000000003', name: 'Lê Quỳnh Anh (Bạn)' }
+  { id: '65bf80010000000000000001', username: 'duyquang', name: 'Đỗ Duy Quang' },
+  { id: '65bf80010000000000000002', username: 'duchuy', name: 'Nguyễn Đức Huy' },
+  { id: '65bf80010000000000000003', username: 'quynhanh', name: 'Lê Quỳnh Anh' }
+];
+
+const DATABASE_USERS = [
+  { id: '65bf80010000000000000001', username: 'duyquang', name: 'Đỗ Duy Quang' },
+  { id: '65bf80010000000000000002', username: 'duchuy', name: 'Nguyễn Đức Huy' },
+  { id: '65bf80010000000000000003', username: 'quynhanh', name: 'Lê Quỳnh Anh' },
+  { id: '65bf80010000000000000004', username: 'haidang', name: 'Lê Võ Hải Đăng' },
+  { id: '65bf80010000000000000005', username: 'vankhach', name: 'Trần Văn Khách' },
+  { id: '65bf80010000000000000006', username: 'anvat', name: 'Phạm Thị Ăn Vặt' }
 ];
 
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Lấy danh sách món ăn được truyền từ Navbar sang
-  const selectedItems = location.state?.selectedItems || [];
+  // Lấy danh sách món ăn được truyền từ Navbar sang, lưu vào state để có thể thêm bớt món ăn
+  const [selectedItems, setSelectedItems] = useState(location.state?.selectedItems || []);
 
   // --- STATE QUẢN LÝ THÔNG TIN KHÁCH HÀNG ---
   const [shippingInfo, setShippingInfo] = useState({
@@ -31,6 +40,86 @@ const Checkout = () => {
   const [orderType, setOrderType] = useState('single'); // single hoặc group
   const [selectedFriends, setSelectedFriends] = useState([]); // Array of ObjectIds
   const [paymentSplit, setPaymentSplit] = useState('equal'); // equal (chia đều) hoặc individual (tự trả)
+
+  // --- STATE QUẢN LÝ THÀNH VIÊN ĐẶT CHUNG & THÊM MÓN ---
+  const [friends, setFriends] = useState(MOCK_FRIENDS);
+  const [searchFriendQuery, setSearchFriendQuery] = useState('');
+  const [availableFoods, setAvailableFoods] = useState([]);
+  const [searchFoodQuery, setSearchFoodQuery] = useState('');
+
+  useEffect(() => {
+    const fetchAvailableFoods = async () => {
+      try {
+        const res = await fetch('/api/foods');
+        const data = await res.json();
+        if (data.status === 'success') {
+          setAvailableFoods(data.foods);
+        }
+      } catch (err) {
+        console.error('Error fetching foods on checkout:', err);
+      }
+    };
+    fetchAvailableFoods();
+  }, []);
+
+  const handleAddFriendBySearch = () => {
+    if (!searchFriendQuery.trim()) return;
+    const query = searchFriendQuery.trim().toLowerCase();
+    
+    // Check if friend is already in friends list
+    const isAlreadyInList = friends.some(f => f.username.toLowerCase() === query);
+    if (isAlreadyInList) {
+      const foundFriend = friends.find(f => f.username.toLowerCase() === query);
+      if (foundFriend && !selectedFriends.includes(foundFriend.id)) {
+        setSelectedFriends(prev => [...prev, foundFriend.id]);
+      }
+      setSearchFriendQuery('');
+      return;
+    }
+
+    // Try finding in database users
+    const matchedDbUser = DATABASE_USERS.find(u => u.username.toLowerCase() === query);
+    if (matchedDbUser) {
+      setFriends(prev => [...prev, matchedDbUser]);
+      if (!selectedFriends.includes(matchedDbUser.id)) {
+        if (selectedFriends.length >= 19) {
+          showError('Quy định hệ thống: Đơn đặt hàng theo nhóm không vượt quá 20 thành viên!');
+          return;
+        }
+        setSelectedFriends(prev => [...prev, matchedDbUser.id]);
+      }
+    } else {
+      // Add a custom friend if user typed a completely new username
+      const customId = 'custom_' + Date.now();
+      const customFriend = {
+        id: customId,
+        username: query,
+        name: query
+      };
+      setFriends(prev => [...prev, customFriend]);
+      if (selectedFriends.length >= 19) {
+        showError('Quy định hệ thống: Đơn đặt hàng theo nhóm không vượt quá 20 thành viên!');
+        return;
+      }
+      setSelectedFriends(prev => [...prev, customId]);
+    }
+    setSearchFriendQuery('');
+  };
+
+  const handleSelectFriendSuggestion = (user) => {
+    const isAlreadyInList = friends.some(f => f.id === user.id);
+    if (!isAlreadyInList) {
+      setFriends(prev => [...prev, user]);
+    }
+    if (!selectedFriends.includes(user.id)) {
+      if (selectedFriends.length >= 19) {
+        showError('Quy định hệ thống: Đơn đặt hàng theo nhóm không vượt quá 20 thành viên!');
+        return;
+      }
+      setSelectedFriends(prev => [...prev, user.id]);
+    }
+    setSearchFriendQuery('');
+  };
 
   // ==========================================
   // STATE QUẢN LÝ MODAL THÔNG BÁO LỖI GIỮA MÀN HÌNH
@@ -65,9 +154,9 @@ const Checkout = () => {
       });
       // Thành viên
       selectedFriends.forEach(friendId => {
-        const friend = MOCK_FRIENDS.find(f => f.id === friendId);
+        const friend = friends.find(f => f.id === friendId);
         paymentAllocationList.push({
-          name: friend ? friend.name : 'Thành viên',
+          name: friend ? `@${friend.username}` : 'Thành viên',
           itemsCost: totalMoney / totalPeople,
           shipCost: splitShipFee,
           totalPay: equalShare
@@ -93,10 +182,10 @@ const Checkout = () => {
       });
       // Thành viên
       selectedFriends.forEach(friendId => {
-        const friend = MOCK_FRIENDS.find(f => f.id === friendId);
+        const friend = friends.find(f => f.id === friendId);
         const cost = allocationMap[friendId] || 0;
         paymentAllocationList.push({
-          name: friend ? friend.name : 'Thành viên',
+          name: friend ? `@${friend.username}` : 'Thành viên',
           itemsCost: cost,
           shipCost: splitShipFee,
           totalPay: cost + splitShipFee
@@ -200,7 +289,7 @@ const Checkout = () => {
             {/* 1. CHỌN LOẠI ĐƠN HÀNG (CÁ NHÂN HOẶC NHÓM) */}
             <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '8px', border: '1px solid #1f2937', boxShadow: '0 4px 6px rgba(0,0,0,0.2)' }}>
               <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#00e676', borderBottom: '2px solid #10b981', paddingBottom: '8px', fontWeight: '700' }}>
-                👥 Loại Đơn Hàng (Nghiệp vụ 9)
+                👥 Loại Đơn Hàng
               </h3>
               <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
                 <button
@@ -232,10 +321,104 @@ const Checkout = () => {
               {/* Giao diện cài đặt Đặt hàng nhóm */}
               {orderType === 'group' && (
                 <div style={{ marginTop: '20px', backgroundColor: '#0b0f19', padding: '20px', borderRadius: '8px', border: '1px solid #1f2937' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#00e676', display: 'block', marginBottom: '10px' }}>Chọn bạn bè đặt chung (QĐ 8: Tối đa 20 người):</label>
+                  {/* Tìm kiếm bạn bè đặt chung */}
+                  <div style={{ marginBottom: '15px', position: 'relative' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#94a3b8', display: 'block', marginBottom: '5px' }}>
+                      Tìm kiếm bạn bè đặt chung theo username:
+                    </label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <input
+                        type="text"
+                        placeholder="Nhập username (ví dụ: haidang, anvat...)"
+                        value={searchFriendQuery}
+                        onChange={(e) => setSearchFriendQuery(e.target.value)}
+                        style={{
+                          flex: 1,
+                          padding: '10px',
+                          backgroundColor: '#0b0f19',
+                          border: '1px solid #1f2937',
+                          borderRadius: '6px',
+                          color: '#fff',
+                          outline: 'none',
+                          fontSize: '13px'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddFriendBySearch}
+                        style={{
+                          backgroundColor: '#10b981',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0 15px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          fontSize: '13px'
+                        }}
+                      >
+                        Thêm
+                      </button>
+                    </div>
+                    {/* Suggestions dropdown */}
+                    {searchFriendQuery.trim() && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        backgroundColor: '#1f2937',
+                        border: '1px solid #374151',
+                        borderRadius: '6px',
+                        zIndex: 10,
+                        marginTop: '5px',
+                        maxHeight: '150px',
+                        overflowY: 'auto',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                      }}>
+                        {DATABASE_USERS.filter(u => 
+                          u.username.toLowerCase().includes(searchFriendQuery.toLowerCase())
+                        ).map(u => (
+                          <div
+                            key={u.id}
+                            onClick={() => handleSelectFriendSuggestion(u)}
+                            style={{
+                              padding: '10px',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #374151',
+                              color: '#e2e8f0',
+                              fontSize: '13px'
+                            }}
+                            onMouseOver={(e) => e.target.style.backgroundColor = '#374151'}
+                            onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                          >
+                            @{u.username} ({u.name})
+                          </div>
+                        ))}
+                        {DATABASE_USERS.filter(u => 
+                          u.username.toLowerCase().includes(searchFriendQuery.toLowerCase())
+                        ).length === 0 && (
+                          <div
+                            onClick={() => handleSelectFriendSuggestion({ id: 'custom_' + Date.now(), username: searchFriendQuery, name: searchFriendQuery })}
+                            style={{
+                              padding: '10px',
+                              cursor: 'pointer',
+                              color: '#10b981',
+                              fontStyle: 'italic',
+                              fontSize: '13px'
+                            }}
+                          >
+                            Thêm bạn mới: @{searchFriendQuery}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#00e676', display: 'block', marginBottom: '10px' }}>Chọn bạn bè đặt chung:</label>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                    {MOCK_FRIENDS.map(friend => {
+                    {friends.map(friend => {
                       const isChecked = selectedFriends.includes(friend.id);
                       return (
                         <label key={friend.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#e2e8f0', cursor: 'pointer', fontSize: '14px' }}>
@@ -245,7 +428,7 @@ const Checkout = () => {
                             onChange={() => handleToggleFriend(friend.id)}
                             style={{ accentColor: '#00e676', width: '16px', height: '16px', cursor: 'pointer' }}
                           />
-                          {friend.name}
+                          @{friend.username}
                         </label>
                       );
                     })}
@@ -285,7 +468,7 @@ const Checkout = () => {
 
                       {/* Bảng phân bổ chi tiết */}
                       <div style={{ borderTop: '1px solid #1f2937', paddingTop: '15px' }}>
-                        <h4 style={{ color: '#ffffff', fontSize: '13px', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>BẢNG PHÂN BỔ TIỀN THANH TOÁN (BM 6)</h4>
+                        <h4 style={{ color: '#ffffff', fontSize: '13px', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>BẢNG PHÂN BỔ TIỀN THANH TOÁN</h4>
                         
                         <div style={{ backgroundColor: '#111827', borderRadius: '6px', padding: '12px', border: '1px solid #1f2937' }}>
                           {paymentAllocationList.map((alloc, i) => (
@@ -381,13 +564,165 @@ const Checkout = () => {
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px dashed #1f2937' }}>
                     <div style={{ flex: 1, paddingRight: '10px' }}>
                       <span style={{ fontWeight: '500', color: '#e2e8f0', display: 'block', fontSize: '14px' }}>{item.name}</span>
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Số lượng: {item.quantity}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: Math.max(1, i.quantity - 1) } : i));
+                          }}
+                          style={{
+                            backgroundColor: '#1f2937',
+                            color: '#fff',
+                            border: 'none',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          -
+                        </button>
+                        <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: 'bold' }}>{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i));
+                          }}
+                          style={{
+                            backgroundColor: '#1f2937',
+                            color: '#fff',
+                            border: 'none',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          +
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedItems(prev => prev.filter(i => i.id !== item.id));
+                          }}
+                          style={{
+                            backgroundColor: 'transparent',
+                            color: '#ef4444',
+                            border: 'none',
+                            marginLeft: '10px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          Xóa
+                        </button>
+                      </div>
                     </div>
                     <span style={{ fontWeight: 'bold', color: '#00e676', fontSize: '14px' }}>
                       {(item.price * item.quantity).toLocaleString()}đ
                     </span>
                   </div>
                 ))}
+              </div>
+
+              {/* Thêm món ăn vào đơn hàng bằng Tìm Kiếm */}
+              <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #1f2937', marginBottom: '20px', position: 'relative' }}>
+                <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>
+                  ➕ Tìm kiếm và thêm món ăn khác:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nhập tên món ăn (ví dụ: cơm tấm, ramen, trà sữa...)"
+                  value={searchFoodQuery}
+                  onChange={(e) => setSearchFoodQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    backgroundColor: '#0b0f19',
+                    border: '1px solid #1f2937',
+                    borderRadius: '6px',
+                    color: '#fff',
+                    outline: 'none',
+                    fontSize: '13px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                
+                {/* Suggestions list for foods */}
+                {searchFoodQuery.trim() && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: '#1f2937',
+                    border: '1px solid #374151',
+                    borderRadius: '6px',
+                    zIndex: 20,
+                    marginTop: '5px',
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.4)'
+                  }}>
+                    {availableFoods
+                      .filter(f => f.name.toLowerCase().includes(searchFoodQuery.toLowerCase()))
+                      .map(food => (
+                        <div
+                          key={food._id}
+                          onClick={() => {
+                            setSelectedItems(prev => {
+                              const existing = prev.find(item => item.id === food._id);
+                              if (existing) {
+                                return prev.map(item => item.id === food._id ? { ...item, quantity: item.quantity + 1 } : item);
+                              }
+                              return [...prev, {
+                                id: food._id,
+                                _id: food._id,
+                                name: food.name,
+                                price: food.price,
+                                quantity: 1,
+                                restaurant_id: food.restaurant_id
+                              }];
+                            });
+                            setSearchFoodQuery('');
+                          }}
+                          style={{
+                            padding: '10px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid #374151',
+                            color: '#e2e8f0',
+                            fontSize: '13px',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseOver={(e) => e.target.style.backgroundColor = '#374151'}
+                          onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                        >
+                          <div style={{ fontWeight: 'bold' }}>{food.name}</div>
+                          <div style={{ fontSize: '11px', color: '#00e676', marginTop: '2px' }}>
+                            {food.price.toLocaleString()}đ
+                            <span style={{ color: '#94a3b8', marginLeft: '8px' }}>
+                              ({food.restaurant_name || (food.restaurant_id?.store_name) || 'Quán ăn'})
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    {availableFoods.filter(f => f.name.toLowerCase().includes(searchFoodQuery.toLowerCase())).length === 0 && (
+                      <div style={{ padding: '10px', color: '#94a3b8', fontStyle: 'italic', fontSize: '13px' }}>
+                        Không tìm thấy món ăn nào phù hợp
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Bảng chi tiết giá tiền */}

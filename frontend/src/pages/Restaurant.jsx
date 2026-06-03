@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import API, { getRevenueReportAPI, getTopSellingItemsAPI, getProfileAPI } from '../services/api';
 import ReviewSection from '../components/ReviewSection';
 
-const Restaurant = () => {
+const Restaurant = ({ openPendingModal }) => {
   const navigate = useNavigate();
   const [localIsLoggedIn] = useState(() => !!localStorage.getItem('token'));
   
@@ -1018,7 +1018,7 @@ const Restaurant = () => {
 
         /* ================= GIAO DIỆN 2: CHƯA PHÊ DUYỆT (PENDING / NONE) ================= */
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-          <Navbar cart={[]} isLoggedIn={localIsLoggedIn} openPendingModal={() => {}} />
+          <Navbar cart={[]} isLoggedIn={localIsLoggedIn} openPendingModal={openPendingModal} />
 
           <div style={{ flex: 1, maxWidth: '1200px', width: '100%', margin: '30px auto', padding: '0 15px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             

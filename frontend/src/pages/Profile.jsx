@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 // 🌟 IMPORT HÀM API ĐỔI MẬT KHẨU & LỊCH SỬ ĐƠN HÀNG TỪ SERVICES
 import { changePasswordAPI, getMyOrdersAPI, getProfileAPI } from '../services/api';
 
-const Profile = () => {
+const Profile = ({ openPendingModal }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -174,7 +174,7 @@ const Profile = () => {
 
   return (
     <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', width: '100%', color: '#ffffff', fontFamily: 'system-ui, sans-serif', position: 'relative' }}>
-      <Navbar cart={[]} isLoggedIn={true} openPendingModal={() => setShowModal(true)} />
+      <Navbar cart={[]} isLoggedIn={true} openPendingModal={openPendingModal} />
 
       {/* ================= TOAST BOX THÔNG BÁO THÀNH CÔNG (GÓC MÀN HÌNH) ================= */}
       {showToast && (

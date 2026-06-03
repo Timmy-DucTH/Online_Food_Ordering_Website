@@ -74,7 +74,7 @@ const initialVirtualMessages = {
   ]
 };
 
-const Home = () => {
+const Home = ({ openPendingModal }) => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -162,6 +162,7 @@ const Home = () => {
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImage, setNewPostImage] = useState('');
   const [taggedFoodId, setTaggedFoodId] = useState(''); // Tagged food in post
+  const [searchTagQuery, setSearchTagQuery] = useState(''); // Search tag for foods
   const [commentsOpen, setCommentsOpen] = useState({}); // postId -> bool
   const [commentInputs, setCommentInputs] = useState({}); // postId -> text
   const [postLoading, setPostLoading] = useState(false);
@@ -184,6 +185,19 @@ const Home = () => {
   const [chatPopupContact, setChatPopupContact] = useState(null);
   const [popupNewMessageText, setPopupNewMessageText] = useState('');
   const chatBottomRef = useRef(null);
+
+  // STATE THÔNG BÁO LỖI/CẢNH BÁO GIỮA MÀN HÌNH (THAY THẾ alert())
+  const [showErrModal, setShowErrModal] = useState(false);
+  const [errModalMsg, setErrModalMsg] = useState('');
+
+  const showError = (msg) => {
+    setErrModalMsg(msg);
+    setShowErrModal(true);
+  };
+
+  // STATE XÁC NHẬN XÓA BÀI VIẾT (THAY THẾ window.confirm())
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [postToDelete, setPostToDelete] = useState(null);
 
   // --- GROUP ORDERING STATES ---
   const [groupOrderActive, setGroupOrderActive] = useState(false);
@@ -600,11 +614,11 @@ const Home = () => {
         showToast('Đặt đơn hàng nhóm thành công!');
         setShowModal(true);
       } else {
-        alert(data.message || 'Lỗi khi đặt đơn hàng nhóm.');
+        showError(data.message || 'Lỗi khi đặt đơn hàng nhóm.');
       }
     } catch (e) {
       console.error(e);
-      alert('Không thể kết nối máy chủ.');
+      showError('Không thể kết nối máy chủ.');
     }
   };
 
@@ -691,11 +705,11 @@ const Home = () => {
         showToast('Đã đăng tải bài review món ngon lên Feed! 🚀');
         loadPosts();
       } else {
-        alert(data.message || 'Lỗi đăng bài viết.');
+        showError(data.message || 'Lỗi đăng bài viết.');
       }
     } catch (err) {
       console.error(err);
-      alert('Không thể kết nối tới máy chủ.');
+      showError('Không thể kết nối tới máy chủ.');
     } finally {
       setPostLoading(false);
     }
@@ -748,8 +762,16 @@ const Home = () => {
     }
   };
 
-  const handleDeletePost = async (postId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) return;
+  const handleDeletePost = (postId) => {
+    setPostToDelete(postId);
+    setShowConfirmModal(true);
+  };
+
+  const executeDeletePost = async () => {
+    if (!postToDelete) return;
+    setShowConfirmModal(false);
+    const postId = postToDelete;
+    setPostToDelete(null);
     try {
       const res = await fetch(`/api/posts/${postId}`, {
         method: 'DELETE',
@@ -762,10 +784,11 @@ const Home = () => {
         setPosts(prev => prev.filter(p => p._id !== postId));
         showToast('Đã xóa bài viết.');
       } else {
-        alert(data.message || 'Lỗi khi xóa bài đăng');
+        showError(data.message || 'Lỗi khi xóa bài đăng');
       }
     } catch (e) {
       console.error('Error deleting post:', e);
+      showError('Không thể kết nối máy chủ.');
     }
   };
 
@@ -945,7 +968,7 @@ const Home = () => {
         updateQuantity={updateQuantity}
         removeFromCart={removeFromCart}
         clearCart={() => groupOrderActive ? setGroupItems([]) : setCart([])}
-        openPendingModal={() => setShowModal(true)}
+        openPendingModal={openPendingModal}
         isLoggedIn={isLoggedIn}
         notifications={notifications}
         setNotifications={setNotifications}
@@ -1003,16 +1026,6 @@ const Home = () => {
             </div>
 
             <div 
-              style={getSidebarItemStyle('orders')} 
-              onClick={() => {
-                if (!isLoggedIn) return navigate('/login');
-                setActiveTab('orders');
-              }}
-            >
-              <span>📦</span> Đơn Hàng Của Tôi
-            </div>
-
-            <div 
               style={getSidebarItemStyle('notifications')} 
               onClick={() => {
                 if (!isLoggedIn) return navigate('/login');
@@ -1030,15 +1043,7 @@ const Home = () => {
               )}
             </div>
 
-            <div 
-              style={getSidebarItemStyle('profile')} 
-              onClick={() => {
-                if (!isLoggedIn) return navigate('/login');
-                navigate('/profile');
-              }}
-            >
-              <span>👤</span> Hồ Sơ Cá Nhân
-            </div>
+
           </div>
         </div>
 
@@ -1047,80 +1052,7 @@ const Home = () => {
             ============================================== */}
         <div style={{ flex: 1, minWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* STICKY TOP HEADER */}
-          <div style={{ 
-            backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`,
-            borderRadius: '16px', padding: '16px 20px', display: 'flex', gap: '16px', 
-            alignItems: 'center', justifyContent: 'space-between', boxShadow: `0 4px 20px ${currentTheme.shadow}`
-          }}>
-            {/* Logo and Delivery Location */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ position: 'relative' }}>
-                <span style={{ fontSize: '20px', cursor: 'pointer' }} onClick={() => setShowLocationSelect(!showLocationSelect)}>📍</span>
-                {showLocationSelect && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, marginTop: '8px',
-                    backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`,
-                    borderRadius: '8px', boxShadow: `0 10px 25px ${currentTheme.shadow}`,
-                    padding: '8px 0', zIndex: 1000, width: '220px'
-                  }}>
-                    {locationsList.map(loc => (
-                      <div key={loc} onClick={() => { setSelectedLocation(loc); setShowLocationSelect(false); }}
-                        style={{
-                          padding: '10px 14px', fontSize: '13px', cursor: 'pointer',
-                          color: selectedLocation === loc ? currentTheme.primary : currentTheme.text
-                        }}>
-                        {loc}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '10px', color: currentTheme.textMuted, fontWeight: '700', textTransform: 'uppercase' }}>Giao đến</span>
-                <span style={{ fontSize: '13px', fontWeight: '700', color: currentTheme.text, cursor: 'pointer' }} onClick={() => setShowLocationSelect(!showLocationSelect)}>
-                  {selectedLocation} ▾
-                </span>
-              </div>
-            </div>
 
-            {/* Smart Search Bar */}
-            <div style={{ flex: 1, position: 'relative', maxWidth: '380px' }}>
-              <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '15px' }}>🔍</span>
-              <input
-                type="text"
-                placeholder="Tìm món, quán hoặc #hashtag..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 16px 10px 40px', borderRadius: '10px',
-                  border: `1.5px solid ${currentTheme.border}`, backgroundColor: currentTheme.inputBg,
-                  color: currentTheme.text, fontSize: '14px', outline: 'none', boxSizing: 'border-box'
-                }}
-              />
-            </div>
-            
-            {/* Quick Actions */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => {
-                  if (!isLoggedIn) return navigate('/login');
-                  setActiveTab('feed');
-                  setTimeout(() => {
-                    const el = document.getElementById('writePostBox');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }, 200);
-                }}
-                style={{
-                  padding: '10px 16px', background: currentTheme.primaryGradient,
-                  color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', fontSize: '13px',
-                  cursor: 'pointer', boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}`
-                }}
-              >
-                + Đăng Review
-              </button>
-            </div>
-          </div>
 
           {/* ACTIVE TAB: ORDER VIEW (DEFAULT INTEGRATED HOME VIEW) */}
           {(activeTab === 'order' || activeTab === 'feed') && (
@@ -1164,6 +1096,32 @@ const Home = () => {
                     </div>
                   </div>
 
+                  {/* Food Search Bar */}
+                  <div style={{ position: 'relative', margin: '15px 0' }}>
+                    <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '16px', color: currentTheme.textMuted }}>🔍</span>
+                    <input
+                      type="text"
+                      placeholder="Tìm món ăn ngon hoặc quán ăn ưa thích của bạn..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px 12px 46px',
+                        borderRadius: '12px',
+                        border: `1.5px solid ${currentTheme.border}`,
+                        backgroundColor: currentTheme.inputBg,
+                        color: currentTheme.text,
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        transition: '0.2s',
+                        boxShadow: `0 2px 8px ${currentTheme.shadow}`
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = currentTheme.primary}
+                      onBlur={(e) => e.target.style.borderColor = currentTheme.border}
+                    />
+                  </div>
+
                   {/* Quick Categories */}
                   <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
                     {CATEGORIES.map(cat => (
@@ -1189,8 +1147,10 @@ const Home = () => {
               )}
 
               {/* AREA 2: SOCIAL COMMUNITY - "HÔM NAY ĂN GÌ?" */}
-              {/* Write Post Box */}
-              <div id="writePostBox" style={{ 
+              {activeTab === 'feed' && (
+                <>
+                  {/* Write Post Box */}
+                  <div id="writePostBox" style={{ 
                 backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
                 borderRadius: '16px', padding: '20px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
               }}>
@@ -1211,34 +1171,204 @@ const Home = () => {
                   />
                   
                   {/* Tag Food drop-down & Image selection */}
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      placeholder="Link hình chụp đồ ăn ngon..."
-                      value={newPostImage}
-                      onChange={e => setNewPostImage(e.target.value)}
-                      style={{ 
-                        flex: 1, minWidth: '180px', padding: '8px 12px', 
-                        backgroundColor: currentTheme.inputBg, border: `1px solid ${currentTheme.border}`, 
-                        borderRadius: '8px', color: currentTheme.text, outline: 'none', fontSize: '13px' 
+                  <div style={{ display: 'flex', gap: '15px', marginTop: '15px', flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
+                    {/* File upload from device or Drag & Drop */}
+                    <div 
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.borderColor = currentTheme.primary;
                       }}
-                    />
-                    
-                    {/* Tag Food dropdown selector */}
-                    <select
-                      value={taggedFoodId}
-                      onChange={e => setTaggedFoodId(e.target.value)}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.borderColor = currentTheme.border;
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.borderColor = currentTheme.border;
+                        const file = e.dataTransfer.files[0];
+                        if (file && file.type.startsWith('image/')) {
+                          const reader = new FileReader();
+                          reader.onload = (uploadEvent) => {
+                            setNewPostImage(uploadEvent.target.result);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
                       style={{
-                        padding: '8px 12px', backgroundColor: currentTheme.inputBg,
-                        border: `1px solid ${currentTheme.border}`, borderRadius: '8px',
-                        color: currentTheme.text, outline: 'none', fontSize: '13px', cursor: 'pointer'
+                        flex: 1.2,
+                        minWidth: '240px',
+                        border: `2px dashed ${newPostImage ? currentTheme.primary : currentTheme.border}`,
+                        borderRadius: '10px',
+                        padding: '8px 10px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        backgroundColor: currentTheme.inputBg,
+                        color: currentTheme.textMuted,
+                        fontSize: '12px',
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '50px',
+                        boxSizing: 'border-box'
                       }}
+                      onClick={() => document.getElementById('device-image-input').click()}
                     >
-                      <option value="">🏷️ Gắn thẻ món ăn...</option>
-                      {foods.map(food => (
-                        <option key={food._id} value={food._id}>{food.name} ({(food.price || 0).toLocaleString()}đ)</option>
-                      ))}
-                    </select>
+                      <input 
+                        type="file" 
+                        id="device-image-input" 
+                        accept="image/*" 
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (uploadEvent) => {
+                              setNewPostImage(uploadEvent.target.result);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      {newPostImage ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <img src={newPostImage} alt="Preview" style={{ width: '38px', height: '38px', objectFit: 'cover', borderRadius: '6px' }} />
+                          <span style={{ color: currentTheme.primary, fontWeight: '700' }}>✓ Đã chọn ảnh</span>
+                          <span 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNewPostImage('');
+                            }} 
+                            style={{ color: '#ff424e', fontWeight: 'bold', marginLeft: '5px', cursor: 'pointer' }}
+                          >
+                            Xóa
+                          </span>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '15px' }}>📸</span>
+                          <span>Kéo thả ảnh hoặc click để tải lên ảnh thiết bị</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Autocomplete Tag Food */}
+                    <div style={{ position: 'relative', minWidth: '220px', flex: 1 }}>
+                      {taggedFoodId ? (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          backgroundColor: currentTheme.activeBg,
+                          border: `1.5px solid ${currentTheme.primary}`,
+                          borderRadius: '8px',
+                          color: currentTheme.text,
+                          fontSize: '13px',
+                          height: '50px',
+                          boxSizing: 'border-box'
+                        }}>
+                          <span style={{ fontWeight: 'bold', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '160px' }}>
+                            🏷️ {foods.find(f => f._id === taggedFoodId)?.name || 'Món ăn'}
+                          </span>
+                          <span 
+                            onClick={() => {
+                              setTaggedFoodId('');
+                              setSearchTagQuery('');
+                            }}
+                            style={{ color: '#ff424e', fontWeight: 'bold', cursor: 'pointer', marginLeft: '10px' }}
+                          >
+                            ✕
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          <input
+                            type="text"
+                            placeholder="🔍 Tìm món ăn để gắn thẻ..."
+                            value={searchTagQuery}
+                            onChange={(e) => setSearchTagQuery(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              backgroundColor: currentTheme.inputBg,
+                              border: `1px solid ${currentTheme.border}`,
+                              borderRadius: '8px',
+                              color: currentTheme.text,
+                              outline: 'none',
+                              fontSize: '13px',
+                              height: '50px',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                          {searchTagQuery.trim() && (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: '100%',
+                              left: 0,
+                              right: 0,
+                              backgroundColor: currentTheme.panel,
+                              border: `1px solid ${currentTheme.border}`,
+                              borderRadius: '8px',
+                              zIndex: 100,
+                              marginBottom: '5px',
+                              maxHeight: '150px',
+                              overflowY: 'auto',
+                              boxShadow: `0 -4px 15px ${currentTheme.shadow}`
+                            }}>
+                              {foods
+                                .filter(f => f.name.toLowerCase().includes(searchTagQuery.toLowerCase()))
+                                .map(food => (
+                                  <div
+                                    key={food._id}
+                                    onClick={() => {
+                                      setTaggedFoodId(food._id);
+                                      setSearchTagQuery('');
+                                    }}
+                                    style={{
+                                      padding: '8px 12px',
+                                      cursor: 'pointer',
+                                      borderBottom: `1px solid ${currentTheme.border}`,
+                                      color: currentTheme.text,
+                                      fontSize: '12px',
+                                      textAlign: 'left',
+                                      transition: 'background-color 0.2s',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '10px'
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = currentTheme.activeBg}
+                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                  >
+                                    <img 
+                                      src={food.image} 
+                                      alt={food.name} 
+                                      style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} 
+                                    />
+                                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                                      <span style={{ fontWeight: 'bold', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'block' }}>
+                                        {food.name}
+                                      </span>
+                                      <span style={{ fontSize: '11px', color: currentTheme.primary, marginTop: '2px', fontWeight: '600', display: 'block' }}>
+                                        {(food.price || 0).toLocaleString()}đ
+                                        <span style={{ color: currentTheme.textMuted, marginLeft: '8px', fontWeight: '400' }}>
+                                          ({food.restaurant_name || food.restaurant_id?.store_name || food.restaurant_id?.display_name || 'Cửa hàng'})
+                                        </span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              {foods.filter(f => f.name.toLowerCase().includes(searchTagQuery.toLowerCase())).length === 0 && (
+                                <div style={{ padding: '8px 12px', color: currentTheme.textMuted, fontStyle: 'italic', fontSize: '12px', textAlign: 'left' }}>
+                                  Không tìm thấy món ăn nào
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
 
                     <button
                       type="submit"
@@ -1424,9 +1554,11 @@ const Home = () => {
                   </button>
                 )}
               </div>
+            </>
+          )}
 
-              {/* AREA 3: E-COMMERCE - MÓN NGON GỢI Ý */}
-              {activeTab === 'order' && (
+          {/* AREA 3: E-COMMERCE - MÓN NGON GỢI Ý */}
+          {activeTab === 'order' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ 
                     backgroundColor: currentTheme.panel, padding: '14px 20px', borderRadius: '12px',
@@ -1708,160 +1840,7 @@ const Home = () => {
           position: 'sticky', top: '90px'
         }}>
           
-          {/* GIỎ HÀNG NHỎ (MINI CART) */}
-          <div style={{ 
-            backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
-            borderRadius: '16px', padding: '18px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
-          }}>
-            <h4 style={{ margin: '0 0 14px 0', fontSize: '13px', textTransform: 'uppercase', color: currentTheme.primary, letterSpacing: '1px', borderBottom: `1px solid ${currentTheme.border}`, paddingBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>🛒 {groupOrderActive ? 'GIỎ HÀNG NHÓM 👥' : 'GIỎ HÀNG NHANH'}</span>
-              {groupOrderActive && (
-                <button onClick={cancelGroupOrder} style={{ backgroundColor: 'transparent', border: 'none', color: '#ff424e', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-                  Hủy nhóm
-                </button>
-              )}
-            </h4>
 
-            {/* Cart Items List */}
-            {(!groupOrderActive && cart.length === 0) || (groupOrderActive && groupItems.length === 0) ? (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: currentTheme.textMuted, fontSize: '13px' }}>
-                Giỏ hàng trống. Click "+" trên thẻ món ăn để thêm.
-              </div>
-            ) : (
-              <div>
-                <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {/* GROUP ORDER MINI CART RENDERING */}
-                  {groupOrderActive ? (
-                    // Group by buyer
-                    ['me', ...groupMembers.map(m => m.id)].map(bId => {
-                      const buyerName = bId === 'me' ? 'Bạn (Chủ nhóm)' : groupMembers.find(m => m.id === bId)?.name || 'Thành viên';
-                      const itemsForBuyer = groupItems.filter(item => item.buyer_id === bId);
-                      if (itemsForBuyer.length === 0) return null;
-                      
-                      return (
-                        <div key={bId} style={{ borderBottom: `1px dashed ${currentTheme.border}`, paddingBottom: '6px', marginBottom: '6px' }}>
-                          <div style={{ fontSize: '11px', fontWeight: '700', color: currentTheme.primary, marginBottom: '4px' }}>👤 {buyerName}</div>
-                          {itemsForBuyer.map(item => (
-                            <div key={item.id + '_' + bId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', marginBottom: '4px' }}>
-                              <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '120px' }}>{item.name}</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <button onClick={() => updateQuantity(item.id, item.quantity - 1, bId)} style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>-</button>
-                                <span>{item.quantity}</span>
-                                <button onClick={() => updateQuantity(item.id, item.quantity + 1, bId)} style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>+</button>
-                                <span style={{ fontWeight: 'bold', marginLeft: '6px' }}>{(item.price * item.quantity).toLocaleString()}đ</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    /* SINGLE CART MINI CART RENDERING */
-                    cart.map(item => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', borderBottom: `1px solid ${currentTheme.border}`, paddingBottom: '8px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                          <span style={{ fontWeight: 'bold', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', width: '120px' }}>{item.name}</span>
-                          <span style={{ fontSize: '11px', color: currentTheme.textMuted }}>{item.price.toLocaleString()}đ</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>-</button>
-                          <span style={{ fontWeight: 'bold' }}>{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>+</button>
-                          <button onClick={() => removeFromCart(item.id)} style={{ background: 'transparent', border: 'none', color: '#ff424e', cursor: 'pointer', marginLeft: '6px' }}>✕</button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Subtotal, Shipping, Total */}
-                <div style={{ borderTop: `1px solid ${currentTheme.border}`, marginTop: '12px', paddingTop: '10px', fontSize: '13px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span>Tổng tiền món:</span>
-                    <span style={{ fontWeight: 'bold' }}>
-                      {(groupOrderActive ? groupItems : cart).reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString()}đ
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: currentTheme.textMuted }}>
-                    <span>Phí ship ước tính:</span>
-                    <span>{groupOrderActive ? '15.000đ' : 'Miễn phí'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '800', borderTop: `1.5px solid ${currentTheme.border}`, paddingTop: '8px' }}>
-                    <span>Cần thanh toán:</span>
-                    <span style={{ color: currentTheme.primary }}>
-                      {((groupOrderActive ? groupItems : cart).reduce((sum, item) => sum + (item.price * item.quantity), 0) + (groupOrderActive ? 15000 : 0)).toLocaleString()}đ
-                    </span>
-                  </div>
-                </div>
-
-                {/* Checkout Button */}
-                {groupOrderActive ? (
-                  <button 
-                    onClick={() => setShowSplitBillModal(true)}
-                    style={{
-                      width: '100%', padding: '12px 0', background: currentTheme.primaryGradient,
-                      color: 'white', border: 'none', borderRadius: '10px', marginTop: '14px',
-                      cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}`
-                    }}
-                  >
-                    👥 Chia Tiền & Đặt Đơn Nhóm
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => navigate('/checkout', { state: { selectedItems: cart } })}
-                    style={{
-                      width: '100%', padding: '12px 0', background: currentTheme.primaryGradient,
-                      color: 'white', border: 'none', borderRadius: '10px', marginTop: '14px',
-                      cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}`
-                    }}
-                  >
-                    💳 Tiến Hành Thanh Toán
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* BẠN BÈ ONLINE & RỦ ĂN CHUNG */}
-          <div style={{ 
-            backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
-            borderRadius: '16px', padding: '18px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
-          }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: currentTheme.textMuted, letterSpacing: '1px', borderBottom: `1px solid ${currentTheme.border}`, paddingBottom: '8px' }}>
-              🟢 BẠN BÈ ONLINE
-            </h4>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {onlineFriends.map(friend => (
-                <div key={friend.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-                    onClick={() => handleSelectChatPopupContact(friend)}>
-                    <div style={{ 
-                      width: '32px', height: '32px', borderRadius: '50%', backgroundColor: currentTheme.bg,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', position: 'relative'
-                    }}>
-                      {friend.avatar}
-                      <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00e676', border: `1.5px solid ${currentTheme.panel}` }} />
-                    </div>
-                    <span style={{ fontSize: '13px', fontWeight: '700', color: currentTheme.text }}>{friend.name}</span>
-                  </div>
-
-                  <button 
-                    disabled={groupOrderActive}
-                    onClick={() => initiateGroupOrder(friend)}
-                    style={{
-                      padding: '5px 10px', backgroundColor: groupOrderActive ? currentTheme.border : currentTheme.activeBg,
-                      color: groupOrderActive ? currentTheme.textMuted : currentTheme.primary,
-                      border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold',
-                      cursor: groupOrderActive ? 'not-allowed' : 'pointer', transition: '0.2s'
-                    }}
-                  >
-                    Rủ ăn 🤝
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Trending Reviews */}
           <div style={{ 
@@ -1890,107 +1869,7 @@ const Home = () => {
 
       </div>
 
-      {/* ==============================================
-          FLOATING MESSENGER CHAT BUBBLE WIDGET
-          ============================================== */}
-      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-        
-        {/* Chat window popup */}
-        {isChatPopupOpen && chatPopupContact && (
-          <div style={{
-            width: '320px', height: '400px', backgroundColor: currentTheme.panel,
-            border: `1.5px solid ${currentTheme.border}`, borderRadius: '16px',
-            boxShadow: `0 12px 40px ${currentTheme.shadow}`, display: 'flex', flexDirection: 'column',
-            overflow: 'hidden', animation: 'slideUp 0.25s ease-out'
-          }}>
-            {/* Header */}
-            <div style={{ 
-              padding: '12px 16px', background: currentTheme.primaryGradient,
-              color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>{chatPopupContact.avatar || '👤'}</span>
-                <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{chatPopupContact.name || chatPopupContact.full_name}</span>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => setIsChatPopupOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold' }}>✕</button>
-              </div>
-            </div>
 
-            {/* Chat Body messages */}
-            <div style={{ flex: 1, padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: currentTheme.bg }}>
-              {chatMessages.length === 0 ? (
-                <div style={{ margin: 'auto', color: currentTheme.textMuted, fontSize: '11px', textAlign: 'center' }}>Vẫy tay chào nhau đi nào! 👋</div>
-              ) : (
-                chatMessages
-                  .filter(m => m.sender_id === (chatPopupContact._id || chatPopupContact.id) || m.receiver_id === (chatPopupContact._id || chatPopupContact.id) || m.receiver_id === 'me' || m.sender_id === 'me')
-                  .map((m, idx) => {
-                    const isMe = m.sender_id === 'me' || (currentUser && m.sender_id === currentUser._id);
-                    const isSys = m.sender_id === 'system_default_1';
-                    return (
-                      <div key={m._id || idx} style={{ display: 'flex', justifyContent: isSys ? 'center' : isMe ? 'flex-end' : 'flex-start', width: '100%' }}>
-                        <div style={{
-                          maxWidth: '80%', padding: '8px 12px', borderRadius: '10px', fontSize: '12px',
-                          backgroundColor: isSys ? 'rgba(234, 88, 12, 0.1)' : isMe ? currentTheme.primary : currentTheme.panel,
-                          color: isSys ? currentTheme.primary : isMe ? 'white' : currentTheme.text,
-                          border: isSys ? `1px dashed ${currentTheme.primary}` : isMe ? 'none' : `1px solid ${currentTheme.border}`,
-                          textAlign: isSys ? 'center' : 'left',
-                          borderRadiusStyle: isSys ? '8px' : isMe ? '10px 10px 0 10px' : '10px 10px 10px 0'
-                        }}>
-                          {m.content}
-                        </div>
-                      </div>
-                    );
-                  })
-              )}
-              <div ref={chatBottomRef} />
-            </div>
-
-            {/* Footer Input */}
-            <form onSubmit={(e) => handleSendMessage(e, popupNewMessageText, chatPopupContact, () => setPopupNewMessageText(''))} 
-              style={{ padding: '8px', borderTop: `1px solid ${currentTheme.border}`, display: 'flex', gap: '6px', backgroundColor: currentTheme.panel }}>
-              <input
-                type="text"
-                placeholder="Nhập tin nhắn rủ ăn..."
-                value={popupNewMessageText}
-                onChange={e => setPopupNewMessageText(e.target.value)}
-                style={{ 
-                  flex: 1, padding: '8px 10px', backgroundColor: currentTheme.bg, 
-                  border: `1px solid ${currentTheme.border}`, borderRadius: '8px', 
-                  color: currentTheme.text, fontSize: '12px', outline: 'none' 
-                }}
-              />
-              <button type="submit" style={{ padding: '8px 12px', backgroundColor: currentTheme.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
-                Gửi
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* Floating Bubble Icon */}
-        <button
-          onClick={() => {
-            if (!isLoggedIn) return navigate('/login');
-            if (!chatPopupContact) {
-              setChatPopupContact(onlineFriends[0]);
-            }
-            setIsChatPopupOpen(!isChatPopupOpen);
-          }}
-          style={{
-            width: '56px', height: '56px', borderRadius: '50%',
-            background: currentTheme.primaryGradient,
-            color: 'white', border: 'none', fontSize: '24px', cursor: 'pointer',
-            boxShadow: `0 8px 25px ${currentTheme.primaryGradientGlow}`, zIndex: 100,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'transform 0.2s'
-          }}
-          onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
-          onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-          title="Mở Chat Rủ Ăn Chung"
-        >
-          💬
-        </button>
-      </div>
 
       {/* ==============================================
           SPLIT BILL & CHECKOUT MODAL FOR GROUP ORDER
@@ -2093,6 +1972,57 @@ const Home = () => {
                 border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px'
               }}
             >Xác nhận</button>
+          </div>
+        </div>
+      )}
+
+      {/* ❌ MODAL THÔNG BÁO LỖI HỆ THỐNG */}
+      {showErrModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: currentTheme.panel, width: '420px', padding: '32px', borderRadius: '16px', border: `1px solid ${currentTheme.border}`, textAlign: 'center', boxShadow: `0 25px 50px -12px ${currentTheme.shadow}`, boxSizing: 'border-box' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚠️</div>
+            <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#ef4444', fontWeight: '800' }}>Thông Báo</h4>
+            <p style={{ color: currentTheme.textMuted, fontSize: '14px', lineHeight: '1.7', margin: '0 0 24px 0', fontWeight: '500' }}>
+              {errModalMsg}
+            </p>
+            <button
+              onClick={() => setShowErrModal(false)}
+              style={{ padding: '10px 32px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' }}
+              onMouseOver={(e) => e.target.style.opacity = '0.85'}
+              onMouseOut={(e) => e.target.style.opacity = '1'}
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 🗑️ MODAL XÁC NHẬN XÓA BÀI VIẾT */}
+      {showConfirmModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 99999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: currentTheme.panel, width: '420px', padding: '32px', borderRadius: '16px', border: `1px solid ${currentTheme.border}`, textAlign: 'center', boxShadow: `0 25px 50px -12px ${currentTheme.shadow}`, boxSizing: 'border-box' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>🗑️</div>
+            <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#ef4444', fontWeight: '800' }}>Xác Nhận Xóa</h4>
+            <p style={{ color: currentTheme.textMuted, fontSize: '14px', lineHeight: '1.7', margin: '0 0 24px 0', fontWeight: '500' }}>
+              Bạn có chắc chắn muốn xóa bài viết này không? Hành động này không thể hoàn tác.
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setPostToDelete(null);
+                }}
+                style={{ flex: 1, padding: '10px 0', backgroundColor: currentTheme.bg, color: currentTheme.text, border: `1.5px solid ${currentTheme.border}`, borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={executeDeletePost}
+                style={{ flex: 1, padding: '10px 0', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Xóa bài viết
+              </button>
+            </div>
           </div>
         </div>
       )}

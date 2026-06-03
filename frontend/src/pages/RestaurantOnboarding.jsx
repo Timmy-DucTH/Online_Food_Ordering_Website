@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import API from '../services/api';
 
-const RestaurantOnboarding = () => {
+const RestaurantOnboarding = ({ openPendingModal }) => {
   const navigate = useNavigate();
   const [localIsLoggedIn] = useState(() => !!localStorage.getItem('token'));
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -130,7 +130,7 @@ const RestaurantOnboarding = () => {
 
   return (
     <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', width: '100%', display: 'flex', flexDirection: 'column', color: '#ffffff', fontFamily: 'system-ui, sans-serif' }}>
-      <Navbar cart={[]} isLoggedIn={localIsLoggedIn} openPendingModal={() => {}} />
+      <Navbar cart={[]} isLoggedIn={localIsLoggedIn} openPendingModal={openPendingModal} />
 
       <div style={{ flex: 1, maxWidth: '850px', width: '100%', margin: '30px auto', padding: '0 15px', boxSizing: 'border-box' }}>
         <form onSubmit={handleSubmit} style={{ backgroundColor: '#111827', borderRadius: '12px', border: '1px solid #1f2937', padding: '35px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
