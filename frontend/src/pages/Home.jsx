@@ -221,24 +221,36 @@ const Home = () => {
     .catch(err => console.error('Error loading messages:', err));
   }, []);
 
-  // Fetch real food data from API
+// Fetch real food data from API
   useEffect(() => {
     const fetchFoods = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/foods');
+        
+        // 1. Sử dụng biến môi trường để trỏ thẳng tới cổng 5000 của Backend
+        // (Hoặc nếu VITE_API_BASE_URL lỗi, bạn có thể gõ cứng 'http://localhost:5000/api/foods')
+        const apiUrl = import.meta.env.VITE_API_BASE_URL 
+          ? `${import.meta.env.VITE_API_BASE_URL}/foods` 
+          : 'http://localhost:5000/api/foods';
+
+        const res = await fetch(apiUrl);
         const data = await res.json();
-        if (data.status === 'success') {
-          setFoods(data.foods);
+        
+        // 2. Chỉnh lại điều kiện khớp với JSON của Backend
+        if (data.success === true || data.status === 'success') {
+          // Lấy đúng mảng dữ liệu (Hỗ trợ đọc cả 'data' lẫn 'foods')
+          setFoods(data.data || data.foods);
         } else {
           setError('Không thể tải danh sách món ăn.');
         }
-      } catch {
+      } catch (error) {
+        console.error("Lỗi fetch:", error); // In lỗi ra console để dễ debug
         setError('Lỗi kết nối máy chủ.');
       } finally {
         setLoading(false);
       }
     };
+    
     fetchFoods();
   }, []);
 
