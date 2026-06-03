@@ -33,6 +33,12 @@ const PostSchema = new mongoose.Schema({
     trim: true
   },
   
+  // Liên kết món ăn phục vụ tính năng "Đặt ngay món này"
+  linked_food: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'food'
+  },
+  
   // Mảng lưu danh sách link hình ảnh đính kèm bài viết
   images: [{
     type: String

@@ -2,12 +2,13 @@ const Post = require('../models/post');
 const User = require('../models/user');
 const Notification = require('../models/notification');
 
-// Fetch all posts populated with author and commenters
+// Fetch all posts populated with author, commenters, and linked food details
 exports.getPosts = async (req, res) => {
   try {
     const posts = await Post.find()
       .populate('author_id', 'full_name email role')
       .populate('Comments.user_id', 'full_name email role')
+      .populate('linked_food')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -23,7 +24,7 @@ exports.getPosts = async (req, res) => {
 exports.createPost = async (req, res) => {
   try {
     const author_id = req.user ? req.user.id : req.body.author_id;
-    const { content, images, videos } = req.body;
+    const { content, images, videos, linked_food } = req.body;
 
     if (!author_id) {
       return res.status(400).json({ status: 'fail', message: 'Bài viết phải có người đăng!' });
@@ -48,13 +49,16 @@ exports.createPost = async (req, res) => {
       author_id,
       content,
       images: images || [],
-      videos: videos || []
+      videos: videos || [],
+      linked_food: linked_food || null
     });
 
     await newPost.save();
 
     // Populate user info for returned post
-    const populatedPost = await Post.findById(newPost._id).populate('author_id', 'full_name email role');
+    const populatedPost = await Post.findById(newPost._id)
+      .populate('author_id', 'full_name email role')
+      .populate('linked_food');
 
     res.status(201).json({
       status: 'success',

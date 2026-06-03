@@ -1,9 +1,67 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FoodCard from '../components/FoodCard';
 
-const CATEGORIES = ['Tất cả', 'Burger', 'Pizza', 'Cơm', 'Món nước', 'Trà sữa', 'Cà phê', 'Tráng miệng', 'Đồ ăn nhanh', 'Đồ uống khác', 'Khác'];
+// ==========================================
+// COLOR SYSTEM (SUPPORTING LIGHT & DARK THEME)
+// - Dark Theme: Classic green accents (#10b981 / #00e676)
+// - Light Theme: Vibrant orange accents (#f97316 / #ea580c)
+// ==========================================
+const colors = {
+  dark: {
+    bg: '#0b0f19',
+    panel: '#111827',
+    border: '#1f2937',
+    text: '#f8fafc',
+    textMuted: '#94a3b8',
+    primary: '#10b981', // Emerald Green
+    primaryHover: '#059669',
+    primaryGlow: 'rgba(16, 185, 129, 0.2)',
+    secondary: '#eab308', // Yellow
+    cardBg: '#1f2937',
+    inputBg: 'rgba(17, 24, 39, 0.8)',
+    shadow: 'rgba(0, 0, 0, 0.4)',
+    divider: 'rgba(31, 41, 55, 0.6)',
+    activeBg: 'rgba(16, 185, 129, 0.15)',
+    activeBorder: '#10b981',
+    primaryGradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    primaryGradientGlow: 'rgba(16, 185, 129, 0.3)'
+  },
+  light: {
+    bg: '#f8fafc',
+    panel: '#ffffff',
+    border: '#e2e8f0',
+    text: '#0f172a',
+    textMuted: '#64748b',
+    primary: '#f97316', // Orange
+    primaryHover: '#ea580c',
+    primaryGlow: 'rgba(249, 115, 22, 0.1)',
+    secondary: '#eab308', // Yellow
+    cardBg: '#ffffff',
+    inputBg: '#f1f5f9',
+    shadow: 'rgba(0, 0, 0, 0.08)',
+    divider: 'rgba(226, 232, 240, 0.8)',
+    activeBg: 'rgba(249, 115, 22, 0.1)',
+    activeBorder: '#f97316',
+    primaryGradient: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+    primaryGradientGlow: 'rgba(249, 115, 22, 0.3)'
+  }
+};
+
+const CATEGORIES = [
+  { name: 'Tất cả', icon: '🍽️' },
+  { name: 'Burger', icon: '🍔' },
+  { name: 'Pizza', icon: '🍕' },
+  { name: 'Cơm', icon: '🍛' },
+  { name: 'Món nước', icon: '🍜' },
+  { name: 'Trà sữa', icon: '🧋' },
+  { name: 'Cà phê', icon: '☕' },
+  { name: 'Tráng miệng', icon: '🍰' },
+  { name: 'Đồ ăn nhanh', icon: '🍟' },
+  { name: 'Đồ uống khác', icon: '🥤' }
+];
+
 const initialVirtualMessages = {
   'driver_default_1': [
     { sender_id: 'driver_default_1', receiver_id: 'me', content: 'Chào bạn, mình là shipper Hùng, lát nữa giao đồ ăn mình sẽ gọi điện nhé!', createdAt: new Date(Date.now() - 3600000).toISOString() }
@@ -16,6 +74,71 @@ const initialVirtualMessages = {
 const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Theme logic
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const currentTheme = theme === 'dark' ? colors.dark : colors.light;
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    showToast(`Đã chuyển sang Chế độ ${newTheme === 'dark' ? 'Tối' : 'Sáng'}!`);
+  };
+
+  // Toast notifications
+  const [toasts, setToasts] = useState([]);
+  const showToast = (message) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
+
+  // Location logic
+  const [selectedLocation, setSelectedLocation] = useState('Quận 1, TP. Hồ Chí Minh');
+  const [showLocationSelect, setShowLocationSelect] = useState(false);
+  const locationsList = [
+    'Quận 1, TP. Hồ Chí Minh',
+    'Quận Bình Thạnh, TP. Hồ Chí Minh',
+    'Quận 7, TP. Hồ Chí Minh',
+    'Cầu Giấy, Hà Nội',
+    'Hoàn Kiếm, Hà Nội',
+    'Hải Châu, Đà Nẵng'
+  ];
+
+  // Carousel logic
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const carouselSlides = [
+    {
+      title: 'Combo Giảm 50% Cho Đơn Nhóm 👥',
+      subtitle: 'Rủ ngay đồng nghiệp order chung để cùng chia sẻ ship 0Đ',
+      bg: 'linear-gradient(135deg, #ea580c 0%, #ca8a04 100%)',
+      badge: 'HOT DEAL'
+    },
+    {
+      title: 'Freeship 0Đ - Ship Món Ăn Trong 15 Phút 🛵',
+      subtitle: 'Ưu đãi đặc biệt từ các thương hiệu được đánh giá cao',
+      bg: 'linear-gradient(135deg, #16a34a 0%, #0d9488 100%)',
+      badge: 'FREE SHIP'
+    },
+    {
+      title: 'Review Món Ngon - Tag Bán Đơn Liền Tay 📝',
+      subtitle: 'Nhận ngay coupon ăn uống khi đăng bài gắn thẻ sản phẩm',
+      bg: 'linear-gradient(135deg, #db2777 0%, #7c3aed 100%)',
+      badge: 'CỘNG ĐỒNG'
+    }
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCarouselIndex(prev => (prev + 1) % carouselSlides.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [carouselSlides.length]);
+
+  // General States
   const [cart, setCart] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [foods, setFoods] = useState([]);
@@ -28,30 +151,52 @@ const Home = () => {
   const [currentUser, setCurrentUser] = useState(null);
 
   // --- SOCIAL MEDIA STATES ---
-  const [activeTab, setActiveTab] = useState('order'); // order, feed, communities, chat, notifications
+  const [activeTab, setActiveTab] = useState('order'); // order (Trang chủ), feed, chat, orders, notifications
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   
   // Feed States
   const [posts, setPosts] = useState([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImage, setNewPostImage] = useState('');
+  const [taggedFoodId, setTaggedFoodId] = useState(''); // Tagged food in post
   const [commentsOpen, setCommentsOpen] = useState({}); // postId -> bool
   const [commentInputs, setCommentInputs] = useState({}); // postId -> text
   const [postLoading, setPostLoading] = useState(false);
 
   // Notifications States
   const [notifications, setNotifications] = useState([]);
+  const [myOrders, setMyOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   
   // Chat States
   const [chatContacts, setChatContacts] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState('');
-  // For virtual contacts simulation
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [virtualMessages, setVirtualMessages] = useState(initialVirtualMessages);
+  
+  // Floating Messenger Widget
+  const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
+  const [chatPopupContact, setChatPopupContact] = useState(null);
+  const [popupNewMessageText, setPopupNewMessageText] = useState('');
+  const chatBottomRef = useRef(null);
 
-  // Hot food reviews (Right Sidebar)
+  // --- GROUP ORDERING STATES ---
+  const [groupOrderActive, setGroupOrderActive] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [groupItems, setGroupItems] = useState([]);
+  const [showSplitBillModal, setShowSplitBillModal] = useState(false);
+
+  // Online Friends List Mock
+  const onlineFriends = [
+    { id: 'friend_koi', name: 'Nguyễn Minh Thư (KOL)', avatar: '🧋', role: 'customer' },
+    { id: 'friend_huy', name: 'Lê Quốc Huy', avatar: '😎', role: 'customer' },
+    { id: 'friend_hai', name: 'Trần Thanh Hải', avatar: '💻', role: 'customer' },
+    { id: 'friend_anh', name: 'Phạm Ngọc Ánh', avatar: '🍓', role: 'customer' }
+  ];
+
+  // Hot reviews (Mock data)
   const hotReviews = [
     { id: 1, title: 'Trà sữa KOI Thé béo ngậy', author: 'Minh Thư (KOL)', rating: 5, img: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=300' },
     { id: 2, title: 'Cơm Tấm sườn nướng mật ong', author: 'Khoai Lang Thang', rating: 4.8, img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300' }
@@ -112,7 +257,28 @@ const Home = () => {
     }
   }, [isLoggedIn]);
 
-  // Handle redirect/state passing from other pages (e.g. Navbar support click)
+  // Fetch My Orders from Backend
+  const loadMyOrders = useCallback(async () => {
+    if (!isLoggedIn) return;
+    try {
+      setOrdersLoading(true);
+      const res = await fetch('/api/orders/my', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setMyOrders(data.orders || []);
+      }
+    } catch (e) {
+      console.error('Error fetching orders:', e);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, [isLoggedIn]);
+
+  // Handle redirect/state passing from other pages
   useEffect(() => {
     if (location.state && location.state.tab) {
       setActiveTab(location.state.tab);
@@ -127,11 +293,12 @@ const Home = () => {
             isVirtual: false
           };
           setSelectedContact(systemContact);
+          setChatPopupContact(systemContact);
+          setIsChatPopupOpen(true);
           setChatMessages([]);
           fetchMessages('system_default_1');
         }
       }
-      // Clear location state to prevent running on every render/reload
       navigate(location.pathname, { replace: true, state: null });
     }
   }, [location.state, location.pathname, navigate, fetchMessages]);
@@ -167,12 +334,18 @@ const Home = () => {
     }
   }, [isLoggedIn]);
 
-  // Sync social details on tab switch
+  // Sync details on tab switch
   useEffect(() => {
-    if (activeTab === 'feed') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (activeTab === 'feed' || activeTab === 'order') {
       loadPosts();
-    } else if (activeTab === 'chat') {
+    }
+    if (activeTab === 'orders') {
+      loadMyOrders();
+    }
+    if (activeTab === 'notifications') {
+      loadNotifications();
+    }
+    if (activeTab === 'chat') {
       // Load chat contacts
       fetch('/api/messages/users', {
         headers: {
@@ -204,19 +377,23 @@ const Home = () => {
       })
       .catch(err => console.error('Error fetching contacts:', err));
     }
-  }, [activeTab, loadPosts, loadNotifications]);
+  }, [activeTab, loadPosts, loadNotifications, loadMyOrders, selectedContact, fetchMessages, isLoggedIn]);
 
-  // Periodic notifications check
+  // Periodic check
   useEffect(() => {
     if (isLoggedIn) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadNotifications();
-      const interval = setInterval(loadNotifications, 10000);
+      const interval = setInterval(loadNotifications, 15000);
       return () => clearInterval(interval);
     }
   }, [isLoggedIn, loadNotifications]);
 
-
+  // Scroll chat popup to bottom when messages update
+  useEffect(() => {
+    if (chatBottomRef.current) {
+      chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages]);
 
   const checkAuthAndExecute = (callback) => {
     const token = localStorage.getItem('token');
@@ -232,15 +409,32 @@ const Home = () => {
   const addToCart = (foodItem) => {
     checkAuthAndExecute(() => {
       const normalized = { ...foodItem, id: foodItem._id || foodItem.id };
-      setCart((prevCart) => {
-        const isExist = prevCart.find(item => item.id === normalized.id);
-        if (isExist) {
-          return prevCart.map(item =>
-            item.id === normalized.id ? { ...item, quantity: item.quantity + 1 } : item
-          );
-        }
-        return [...prevCart, { ...normalized, quantity: 1 }];
-      });
+      
+      if (groupOrderActive) {
+        // Add to group cart
+        setGroupItems(prev => {
+          const isExist = prev.find(item => item.id === normalized.id && item.buyer_id === 'me');
+          if (isExist) {
+            return prev.map(item =>
+              (item.id === normalized.id && item.buyer_id === 'me') ? { ...item, quantity: item.quantity + 1 } : item
+            );
+          }
+          return [...prev, { ...normalized, quantity: 1, buyer_id: 'me', buyer_name: 'Bạn (Chủ nhóm)' }];
+        });
+        showToast(`Đã thêm "${normalized.name}" vào giỏ hàng nhóm!`);
+      } else {
+        // Add to single cart
+        setCart((prevCart) => {
+          const isExist = prevCart.find(item => item.id === normalized.id);
+          if (isExist) {
+            return prevCart.map(item =>
+              item.id === normalized.id ? { ...item, quantity: item.quantity + 1 } : item
+            );
+          }
+          return [...prevCart, { ...normalized, quantity: 1 }];
+        });
+        showToast(`Đã thêm "${normalized.name}" vào giỏ hàng!`);
+      }
     });
   };
 
@@ -253,30 +447,204 @@ const Home = () => {
     });
   };
 
-  const updateQuantity = (id, newQty) => {
+  const updateQuantity = (id, newQty, buyerId = null) => {
     if (newQty < 1) return;
-    setCart((prevCart) =>
-      prevCart.map((item) => (item.id === id ? { ...item, quantity: newQty } : item))
-    );
+    if (groupOrderActive) {
+      setGroupItems(prev =>
+        prev.map(item => (item.id === id && item.buyer_id === buyerId) ? { ...item, quantity: newQty } : item)
+      );
+    } else {
+      setCart(prevCart =>
+        prevCart.map(item => (item.id === id ? { ...item, quantity: newQty } : item))
+      );
+    }
   };
 
-  const removeFromCart = (id) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  const removeFromCart = (id, buyerId = null) => {
+    if (groupOrderActive) {
+      setGroupItems(prev => prev.filter(item => !(item.id === id && item.buyer_id === buyerId)));
+    } else {
+      setCart(prevCart => prevCart.filter(item => item.id !== id));
+    }
   };
 
-  const clearCart = () => setCart([]);
+  // Group Order actions
+  const initiateGroupOrder = (friend) => {
+    if (!isLoggedIn) return navigate('/login');
+    setGroupOrderActive(true);
+    setGroupMembers([friend]);
+    setGroupItems([]);
+    showToast(`Đã tạo phòng đặt chung nhóm với ${friend.name}!`);
+
+    // Simulate chat message
+    const welcomeMsg = {
+      _id: 'sys_' + Date.now(),
+      sender_id: 'system_default_1',
+      receiver_id: 'me',
+      content: `👥 Phòng đặt chung nhóm với ${friend.name} đã bắt đầu! Đang chờ bạn bè chọn món...`,
+      createdAt: new Date().toISOString()
+    };
+    setChatMessages(prev => [...prev, welcomeMsg]);
+    setChatPopupContact({
+      _id: 'system_default_1',
+      full_name: '🛡️ Hệ thống TasteByte',
+      role: 'system',
+      isVirtual: true
+    });
+    setIsChatPopupOpen(true);
+
+    // Simulate friend adding item
+    setTimeout(() => {
+      const item1 = {
+        id: 'mock_koi_id',
+        item_id: 'mock_koi_id',
+        name: 'Trà sữa KOI Thé béo ngậy',
+        price: 60000,
+        quantity: 1,
+        buyer_id: friend.id,
+        buyer_name: friend.name
+      };
+      setGroupItems(prev => [...prev, item1]);
+      showToast(`${friend.name} đã thêm 1 Trà sữa KOI Thé vào giỏ nhóm.`);
+      
+      setChatMessages(prev => [...prev, {
+        _id: 'sys_' + Date.now(),
+        sender_id: 'system_default_1',
+        receiver_id: 'me',
+        content: `⚡ ${friend.name} đã thêm 1 Trà sữa KOI Thé béo ngậy (60.000đ) vào giỏ nhóm.`,
+        createdAt: new Date().toISOString()
+      }]);
+    }, 4000);
+
+    // Simulate another friend joining and adding item
+    setTimeout(() => {
+      const friend2 = onlineFriends.find(f => f.id === 'friend_huy');
+      setGroupMembers(prev => [...prev, friend2]);
+      const item2 = {
+        id: 'mock_com_id',
+        item_id: 'mock_com_id',
+        name: 'Cơm Tấm sườn nướng mật ong',
+        price: 45000,
+        quantity: 1,
+        buyer_id: friend2.id,
+        buyer_name: friend2.name
+      };
+      setGroupItems(prev => [...prev, item2]);
+      showToast(`${friend2.name} đã thêm 1 Cơm Tấm sườn nướng vào giỏ nhóm.`);
+
+      setChatMessages(prev => [...prev, {
+        _id: 'sys_' + Date.now(),
+        sender_id: 'system_default_1',
+        receiver_id: 'me',
+        content: `⚡ ${friend2.name} đã tham gia đặt chung và thêm 1 Cơm Tấm sườn nướng mật ong (45.000đ).`,
+        createdAt: new Date().toISOString()
+      }]);
+    }, 8500);
+  };
+
+  const cancelGroupOrder = () => {
+    setGroupOrderActive(false);
+    setGroupMembers([]);
+    setGroupItems([]);
+    showToast('Đã hủy phòng đặt hàng nhóm.');
+  };
+
+  // Submit group order to backend
+  const handleGroupCheckoutSubmit = async () => {
+    const itemsList = groupItems.map(item => ({
+      item_id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      buyer_id: currentUser ? currentUser._id : null
+    }));
+
+    try {
+      const activeRest = foods[0]?.restaurant_id?._id || foods[0]?.restaurant_id || null;
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          restaurant_id: activeRest,
+          order_type: 'group',
+          shipping_address: selectedLocation,
+          distance_km: 3,
+          items: itemsList,
+          members: groupMembers.map(m => m.id)
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        setShowSplitBillModal(false);
+        setGroupOrderActive(false);
+        setGroupMembers([]);
+        setGroupItems([]);
+        showToast('Đặt đơn hàng nhóm thành công!');
+        setShowModal(true);
+      } else {
+        alert(data.message || 'Lỗi khi đặt đơn hàng nhóm.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Không thể kết nối máy chủ.');
+    }
+  };
+
+  // Split bill totals calculation
+  const getSplitBillDetails = () => {
+    const splitMap = {};
+    // Add me
+    splitMap['me'] = { name: 'Bạn (Chủ nhóm)', itemsTotal: 0, count: 0 };
+    groupMembers.forEach(m => {
+      splitMap[m.id] = { name: m.name, itemsTotal: 0, count: 0 };
+    });
+
+    groupItems.forEach(item => {
+      const bId = item.buyer_id || 'me';
+      if (!splitMap[bId]) {
+        splitMap[bId] = { name: item.buyer_name || 'Thành viên', itemsTotal: 0, count: 0 };
+      }
+      splitMap[bId].itemsTotal += item.price * item.quantity;
+      splitMap[bId].count += item.quantity;
+    });
+
+    const subtotal = groupItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
+    const shippingFee = 15000; // Mock shipping fee
+    const memberCount = Object.keys(splitMap).length;
+    const splitShipFee = Math.round(shippingFee / memberCount);
+
+    const splitList = Object.keys(splitMap).map(id => {
+      const userTotal = splitMap[id].itemsTotal;
+      return {
+        id,
+        name: splitMap[id].name,
+        itemsTotal: userTotal,
+        shipShare: userTotal > 0 ? splitShipFee : 0, // only pay ship if ordered food
+        total: userTotal > 0 ? (userTotal + splitShipFee) : 0
+      };
+    });
+
+    return {
+      splitList,
+      subtotal,
+      shippingFee,
+      totalPrice: subtotal + shippingFee
+    };
+  };
 
   // Filter foods by category and search
   const filteredFoods = foods.filter(food => {
     const matchCat = selectedCategory === 'Tất cả' || food.category === selectedCategory;
     const matchSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (food.restaurant_id?.display_name || food.restaurant_id?.store_name || food.restaurant_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+      (food.restaurant_id?.display_name || food.restaurant_id?.store_name || food.restaurant_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      searchQuery.startsWith('#') && food.category.toLowerCase().includes(searchQuery.substring(1).toLowerCase());
     return matchCat && matchSearch;
   });
 
   // --- SOCIAL MEDIA LOGIC & HANDLERS ---
-
-  // Handle Post Creation
   const handleCreatePost = async (e) => {
     e.preventDefault();
     if (!isLoggedIn) return navigate('/login');
@@ -284,21 +652,28 @@ const Home = () => {
 
     setPostLoading(true);
     try {
+      const payload = {
+        content: newPostContent,
+        images: newPostImage.trim() ? [newPostImage] : []
+      };
+      if (taggedFoodId) {
+        payload.linked_food = taggedFoodId;
+      }
+
       const res = await fetch('/api/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({
-          content: newPostContent,
-          images: newPostImage.trim() ? [newPostImage] : []
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok && data.status === 'success') {
         setNewPostContent('');
         setNewPostImage('');
+        setTaggedFoodId('');
+        showToast('Đã đăng tải bài review món ngon lên Feed! 🚀');
         loadPosts();
       } else {
         alert(data.message || 'Lỗi đăng bài viết.');
@@ -311,7 +686,6 @@ const Home = () => {
     }
   };
 
-  // Toggle Like on Post
   const handleLikePost = async (postId) => {
     if (!isLoggedIn) return navigate('/login');
     try {
@@ -331,12 +705,10 @@ const Home = () => {
     }
   };
 
-  // Toggle Comments Drawer
   const toggleComments = (postId) => {
     setCommentsOpen(prev => ({ ...prev, [postId]: !prev[postId] }));
   };
 
-  // Handle Add Comment
   const handleAddComment = async (postId) => {
     if (!isLoggedIn) return navigate('/login');
     const content = commentInputs[postId];
@@ -361,7 +733,6 @@ const Home = () => {
     }
   };
 
-  // Delete Post
   const handleDeletePost = async (postId) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) return;
     try {
@@ -374,6 +745,7 @@ const Home = () => {
       const data = await res.json();
       if (data.status === 'success') {
         setPosts(prev => prev.filter(p => p._id !== postId));
+        showToast('Đã xóa bài viết.');
       } else {
         alert(data.message || 'Lỗi khi xóa bài đăng');
       }
@@ -381,26 +753,6 @@ const Home = () => {
       console.error('Error deleting post:', e);
     }
   };
-
-  // Mark notification as read
-  const handleMarkNotificationRead = async (notifyId) => {
-    try {
-      const res = await fetch(`/api/notifications/${notifyId}/read`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      const data = await res.json();
-      if (data.status === 'success') {
-        setNotifications(prev => prev.map(n => n._id === notifyId ? { ...n, is_read: true } : n));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-
 
   // Select chat contact
   const handleSelectContact = (contact) => {
@@ -413,20 +765,35 @@ const Home = () => {
     }
   };
 
-  // Send message
-  const handleSendMessage = async (e) => {
+  // Select chat popup contact
+  const handleSelectChatPopupContact = (contact) => {
+    setChatPopupContact(contact);
+    setIsChatPopupOpen(true);
+    if (contact.isVirtual || contact.id?.startsWith('friend_')) {
+      setChatMessages(virtualMessages[contact._id || contact.id] || []);
+    } else {
+      setChatMessages([]);
+      fetchMessages(contact._id);
+    }
+  };
+
+  // Send message from chat tab or popup
+  const handleSendMessage = async (e, textMessage, receiverContact, clearInputCallback) => {
     e.preventDefault();
-    if (!newMessageText.trim() || !selectedContact) return;
+    if (!textMessage.trim() || !receiverContact) return;
 
-    const text = newMessageText.trim();
-    setNewMessageText('');
+    const text = textMessage.trim();
+    clearInputCallback();
 
-    if (selectedContact.isVirtual) {
-      // Simulate local message
+    const contactId = receiverContact._id || receiverContact.id;
+    const isVirtual = receiverContact.isVirtual || contactId.startsWith('friend_');
+
+    if (isVirtual) {
+      // Local simulated message
       const myMsg = {
         _id: 'temp_msg_' + Date.now(),
         sender_id: 'me',
-        receiver_id: selectedContact._id,
+        receiver_id: contactId,
         content: text,
         createdAt: new Date().toISOString()
       };
@@ -434,18 +801,18 @@ const Home = () => {
       setVirtualMessages(prev => {
         const updated = {
           ...prev,
-          [selectedContact._id]: [...(prev[selectedContact._id] || []), myMsg]
+          [contactId]: [...(prev[contactId] || []), myMsg]
         };
-        setChatMessages(updated[selectedContact._id]);
+        setChatMessages(updated[contactId]);
         return updated;
       });
 
-      // Simulate bot reply
+      // Bot auto-reply logic
       setTimeout(() => {
         const query = text.toLowerCase();
         let botReply = '';
 
-        if (selectedContact._id === 'system_default_1') {
+        if (contactId === 'system_default_1') {
           if (query.includes('đơn hàng') || query.includes('mua') || query.includes('món')) {
             botReply = 'Hệ thống đã nhận thông tin. Để kiểm tra chi tiết đơn hàng hoặc yêu cầu chỉnh sửa, bạn hãy nhắn tin trực tiếp với Cửa hàng hoặc Shipper giao hàng nhé!';
           } else if (query.includes('chào') || query.includes('hello') || query.includes('hi')) {
@@ -455,7 +822,7 @@ const Home = () => {
           } else {
             botReply = 'Cảm ơn bạn đã phản hồi tới Hệ thống TasteByte. Yêu cầu của bạn đã được lưu lại và chuyển tiếp đến bộ phận CSKH để xử lý sớm nhất.';
           }
-        } else if (selectedContact._id === 'driver_default_1') {
+        } else if (contactId === 'driver_default_1') {
           if (query.includes('đồ ăn') || query.includes('khi nào') || query.includes('bao lâu')) {
             botReply = 'Mình đang nhận hàng tại quán rồi nhé, tầm 5 - 10 phút nữa mình giao qua liền nha!';
           } else if (query.includes('tương ớt') || query.includes('nhiều tương')) {
@@ -463,7 +830,7 @@ const Home = () => {
           } else {
             botReply = 'Dạ vâng, mình đã ghi nhận thông tin rồi ạ. Mình đang giao gấp!';
           }
-        } else if (selectedContact._id === 'store_default_1') {
+        } else if (contactId === 'store_default_1') {
           if (query.includes('đổi') || query.includes('hủy') || query.includes('hoàn')) {
             botReply = 'Yêu cầu của bạn đã được chuyển đến bộ phận hỗ trợ đơn hàng. Chúng tôi sẽ phản hồi trong giây lát.';
           } else if (query.includes('shipper') || query.includes('tài xế')) {
@@ -471,11 +838,17 @@ const Home = () => {
           } else {
             botReply = 'TasteByte Support cám ơn bạn, chúng tôi luôn online 24/7 để đồng hành cùng đơn hàng của bạn!';
           }
+        } else if (contactId.startsWith('friend_')) {
+          if (query.includes('ăn chung') || query.includes('đặt chung') || query.includes('rủ')) {
+            botReply = 'Được nha! Bạn khởi tạo phòng đặt chung "Rủ ăn chung" đi, mình bỏ món liền!';
+          } else {
+            botReply = 'Thèm trà sữa cơm tấm quá nè, đặt chung cho rẻ ship đi!';
+          }
         }
 
         const botMsg = {
           _id: 'bot_msg_' + Date.now(),
-          sender_id: selectedContact._id,
+          sender_id: contactId,
           receiver_id: 'me',
           content: botReply,
           createdAt: new Date().toISOString()
@@ -484,15 +857,16 @@ const Home = () => {
         setVirtualMessages(prev => {
           const updated = {
             ...prev,
-            [selectedContact._id]: [...(prev[selectedContact._id] || []), botMsg]
+            [contactId]: [...(prev[contactId] || []), botMsg]
           };
-          setChatMessages(updated[selectedContact._id]);
+          setChatMessages(updated[contactId]);
           return updated;
         });
+        showToast(`Tin nhắn mới từ ${receiverContact.full_name || receiverContact.name}`);
       }, 1500);
 
     } else {
-      // Real database message API call
+      // Database messaging API call
       try {
         const res = await fetch('/api/messages', {
           method: 'POST',
@@ -501,7 +875,7 @@ const Home = () => {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
           body: JSON.stringify({
-            receiver_id: selectedContact._id,
+            receiver_id: contactId,
             content: text
           })
         });
@@ -516,235 +890,351 @@ const Home = () => {
   };
 
   // --- STYLING HELPERS ---
-  const sidebarItemStyle = (tabName) => ({
+  const getSidebarItemStyle = (tabName) => ({
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '12px 16px',
-    borderRadius: '10px',
+    gap: '14px',
+    padding: '14px 18px',
+    borderRadius: '12px',
     fontSize: '15px',
     fontWeight: '600',
-    color: activeTab === tabName ? '#00e676' : '#94a3b8',
-    backgroundColor: activeTab === tabName ? 'rgba(0, 230, 118, 0.1)' : 'transparent',
-    border: activeTab === tabName ? '1px solid rgba(0, 230, 118, 0.2)' : '1px solid transparent',
+    color: activeTab === tabName ? currentTheme.primary : currentTheme.textMuted,
+    backgroundColor: activeTab === tabName ? currentTheme.activeBg : 'transparent',
+    borderLeft: activeTab === tabName ? `4px solid ${currentTheme.activeBorder}` : '4px solid transparent',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    marginBottom: '8px',
+    transition: 'all 0.25s ease',
+    marginBottom: '6px',
     textDecoration: 'none',
-    position: 'relative'
+    boxShadow: activeTab === tabName ? `0 4px 12px ${currentTheme.primaryGlow}` : 'none'
   });
 
   return (
-    <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', width: '100%', margin: 0, padding: 0, color: '#f8fafc', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ backgroundColor: currentTheme.bg, minHeight: '100vh', width: '100%', margin: 0, padding: 0, color: currentTheme.text, fontFamily: "'Inter', sans-serif", transition: 'background-color 0.3s, color 0.3s' }}>
+      
+      {/* Toast Alert list */}
+      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {toasts.map(t => (
+          <div key={t.id} style={{
+            background: currentTheme.primaryGradient,
+            color: 'white', padding: '12px 24px', borderRadius: '10px',
+            boxShadow: `0 10px 25px ${currentTheme.primaryGradientGlow}`, fontWeight: '600',
+            fontSize: '14px', animation: 'slideIn 0.3s ease'
+          }}>
+            {t.message}
+          </div>
+        ))}
+      </div>
+
       <Navbar
-        cart={cart}
+        cart={groupOrderActive ? groupItems : cart}
         updateQuantity={updateQuantity}
         removeFromCart={removeFromCart}
-        clearCart={clearCart}
+        clearCart={() => groupOrderActive ? setGroupItems([]) : setCart([])}
         openPendingModal={() => setShowModal(true)}
         isLoggedIn={isLoggedIn}
         notifications={notifications}
         setNotifications={setNotifications}
+        theme={theme}
       />
 
       {/* CORE 3-COLUMN LAYOUT CONTAINER */}
-      <div style={{ display: 'flex', maxWidth: '1200px', margin: '0 auto', padding: '24px 16px', gap: '24px', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', maxWidth: '1250px', margin: '0 auto', padding: '24px 16px', gap: '24px', alignItems: 'flex-start' }}>
         
         {/* ==============================================
-            LEFT SIDEBAR: SOCIAL & ORDER MENU
+            LEFT COLUMN (SIDEBAR): SYSTEM NAVIGATION (20%)
             ============================================== */}
-        <div style={{ width: '20%', minWidth: '200px', flexShrink: 0, backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '14px', padding: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
-          <h4 style={{ margin: '0 0 16px 0', fontSize: '12px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '1px', paddingLeft: '8px' }}>Chức Năng</h4>
+        <div style={{ 
+          width: '20%', minWidth: '220px', flexShrink: 0, 
+          backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
+          borderRadius: '16px', padding: '20px 14px', boxShadow: `0 10px 30px ${currentTheme.shadow}`,
+          position: 'sticky', top: '90px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', padding: '0 8px' }}>
+            <h4 style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', color: currentTheme.textMuted, letterSpacing: '1px' }}>MENU CHÍNH</h4>
+            
+            {/* Theme Toggle Button */}
+            <button onClick={toggleTheme} style={{
+              backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px',
+              padding: '6px', borderRadius: '50%', border: `1px solid ${currentTheme.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }} title="Đổi giao diện">
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+          </div>
           
-          <div 
-            style={sidebarItemStyle('order')} 
-            onClick={() => setActiveTab('order')}
-            onMouseEnter={(e) => { if (activeTab !== 'order') e.currentTarget.style.backgroundColor = '#1f2937'; }}
-            onMouseLeave={(e) => { if (activeTab !== 'order') e.currentTarget.style.backgroundColor = 'transparent'; }}
-          >
-            <span>🍽️</span> Đặt Món Ăn
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div 
+              style={getSidebarItemStyle('order')} 
+              onClick={() => setActiveTab('order')}
+            >
+              <span>🏠</span> Trang Chủ
+            </div>
+
+            <div 
+              style={getSidebarItemStyle('feed')} 
+              onClick={() => setActiveTab('feed')}
+            >
+              <span>📰</span> Bảng Tin (Feed)
+            </div>
+
+            <div 
+              style={getSidebarItemStyle('chat')} 
+              onClick={() => {
+                if (!isLoggedIn) return navigate('/login');
+                setActiveTab('chat');
+              }}
+            >
+              <span>💬</span> Tin Nhắn
+            </div>
+
+            <div 
+              style={getSidebarItemStyle('orders')} 
+              onClick={() => {
+                if (!isLoggedIn) return navigate('/login');
+                setActiveTab('orders');
+              }}
+            >
+              <span>📦</span> Đơn Hàng Của Tôi
+            </div>
+
+            <div 
+              style={getSidebarItemStyle('notifications')} 
+              onClick={() => {
+                if (!isLoggedIn) return navigate('/login');
+                setActiveTab('notifications');
+              }}
+            >
+              <span>🔔</span> Thông Báo
+              {notifications.filter(n => !n.is_read).length > 0 && (
+                <span style={{ 
+                  backgroundColor: '#ff424e', color: 'white', borderRadius: '50%', 
+                  padding: '2px 7px', fontSize: '10px', fontWeight: 'bold', marginLeft: 'auto'
+                }}>
+                  {notifications.filter(n => !n.is_read).length}
+                </span>
+              )}
+            </div>
+
+            <div 
+              style={getSidebarItemStyle('profile')} 
+              onClick={() => {
+                if (!isLoggedIn) return navigate('/login');
+                navigate('/profile');
+              }}
+            >
+              <span>👤</span> Hồ Sơ Cá Nhân
+            </div>
           </div>
-
-          <h4 style={{ margin: '16px 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '1px', paddingLeft: '8px' }}>Mạng Xã Hội</h4>
-          
-          <div 
-            style={sidebarItemStyle('feed')} 
-            onClick={() => setActiveTab('feed')}
-            onMouseEnter={(e) => { if (activeTab !== 'feed') e.currentTarget.style.backgroundColor = '#1f2937'; }}
-            onMouseLeave={(e) => { if (activeTab !== 'feed') e.currentTarget.style.backgroundColor = 'transparent'; }}
-          >
-            <span>📰</span> Bảng Tin (Feed)
-          </div>
-
-
-          <div 
-            style={sidebarItemStyle('chat')} 
-            onClick={() => {
-              if (!isLoggedIn) return navigate('/login');
-              setActiveTab('chat');
-            }}
-            onMouseEnter={(e) => { if (activeTab !== 'chat') e.currentTarget.style.backgroundColor = '#1f2937'; }}
-            onMouseLeave={(e) => { if (activeTab !== 'chat') e.currentTarget.style.backgroundColor = 'transparent'; }}
-          >
-            <span>💬</span> Nhắn Tin (Chat)
-          </div>
-
-
         </div>
 
         {/* ==============================================
-            MIDDLE COLUMN: INTERACTIVE VIEWPORTS
+            MIDDLE COLUMN: MAIN VIEWPORT (55%)
             ============================================== */}
-        <div style={{ flex: 1, minWidth: '400px' }}>
+        <div style={{ flex: 1, minWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* TAB 1: ORDER FLOW (ORIGINAL CONTENT) */}
-          {activeTab === 'order' && (
-            <div>
-              {/* HERO BANNER */}
-              <div style={{
-                padding: '56px 24px', textAlign: 'center', borderRadius: '16px',
-                marginBottom: '28px',
-                background: 'linear-gradient(135deg, #064e3b 0%, #0d1a2d 60%, #0b0f19 100%)',
-                border: '1px solid #065f46', position: 'relative', overflow: 'hidden'
-              }}>
-                <div style={{
-                  position: 'absolute', top: '-40px', right: '-40px', width: '200px', height: '200px',
-                  borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)',
-                  pointerEvents: 'none'
-                }} />
-                <div style={{
-                  position: 'absolute', bottom: '-30px', left: '-30px', width: '160px', height: '160px',
-                  borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,115,22,0.1) 0%, transparent 70%)',
-                  pointerEvents: 'none'
-                }} />
-                <h2 style={{ fontSize: '36px', margin: '0 0 10px', fontWeight: '800', color: '#fff', position: 'relative' }}>
-                  Bạn muốn ăn gì hôm nay? 😋
-                </h2>
-                <p style={{ fontSize: '16px', color: '#34d399', margin: '0 0 28px', fontWeight: '400', position: 'relative' }}>
-                  Hàng ngàn món ngon từ các cửa hàng uy tín — giao siêu tốc tới tay bạn
-                </p>
-
-                {/* Search bar */}
-                <div style={{ position: 'relative', maxWidth: '480px', margin: '0 auto' }}>
-                  <span style={{
-                    position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)',
-                    fontSize: '18px', pointerEvents: 'none'
-                  }}>🔍</span>
-                  <input
-                    type="text"
-                    placeholder="Tìm món ăn hoặc cửa hàng..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    style={{
-                      width: '100%', padding: '14px 16px 14px 46px', borderRadius: '12px',
-                      border: '1.5px solid #065f46', backgroundColor: 'rgba(17,24,39,0.8)',
-                      color: '#f1f5f9', fontSize: '15px', outline: 'none', boxSizing: 'border-box',
-                      backdropFilter: 'blur(8px)'
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* CATEGORY PILLS */}
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
-                {CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    style={{
-                      padding: '8px 18px', borderRadius: '24px', fontSize: '13px', fontWeight: '600',
-                      cursor: 'pointer', transition: '0.2s',
-                      backgroundColor: selectedCategory === cat ? '#10b981' : '#1f2937',
-                      color: selectedCategory === cat ? '#fff' : '#94a3b8',
-                      border: selectedCategory === cat ? '1.5px solid #10b981' : '1.5px solid #374151'
-                    }}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              {/* SECTION HEADER */}
-              <div style={{
-                backgroundColor: '#111827', padding: '13px 20px', borderRadius: '10px 10px 0 0',
-                fontWeight: '700', color: '#34d399', border: '1px solid #1f2937', borderBottom: 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-              }}>
-                <span>🟢 MÓN NGON GỢI Ý CHO BẠN</span>
-                {!loading && (
-                  <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '400' }}>
-                    {filteredFoods.length} món
-                  </span>
-                )}
-              </div>
-
-              <div style={{
-                backgroundColor: '#111827', padding: '24px', borderRadius: '0 0 10px 10px',
-                border: '1px solid #1f2937', boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-              }}>
-                {loading && (
-                  <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
-                    <div style={{ fontSize: '40px', marginBottom: '12px' }}>⏳</div>
-                    <p style={{ fontSize: '15px' }}>Đang tải danh sách món ăn...</p>
-                  </div>
-                )}
-
-                {!loading && error && (
-                  <div style={{ textAlign: 'center', padding: '60px 0', color: '#ef4444' }}>
-                    <div style={{ fontSize: '40px', marginBottom: '12px' }}>❌</div>
-                    <p>{error}</p>
-                  </div>
-                )}
-
-                {!loading && !error && filteredFoods.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
-                    <div style={{ fontSize: '48px', marginBottom: '12px' }}>🍽️</div>
-                    <p style={{ fontSize: '16px', marginBottom: '6px' }}>Không tìm thấy món ăn phù hợp</p>
-                    <p style={{ fontSize: '13px' }}>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
-                  </div>
-                )}
-
-                {!loading && !error && filteredFoods.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-                    {filteredFoods.map(food => (
-                      <FoodCard
-                        key={food._id}
-                        item={food}
-                        addToCart={addToCart}
-                        handleBuyNow={() => handleDirectCheckout(food)}
-                      />
+          {/* STICKY TOP HEADER */}
+          <div style={{ 
+            backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`,
+            borderRadius: '16px', padding: '16px 20px', display: 'flex', gap: '16px', 
+            alignItems: 'center', justifyContent: 'space-between', boxShadow: `0 4px 20px ${currentTheme.shadow}`
+          }}>
+            {/* Logo and Delivery Location */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ position: 'relative' }}>
+                <span style={{ fontSize: '20px', cursor: 'pointer' }} onClick={() => setShowLocationSelect(!showLocationSelect)}>📍</span>
+                {showLocationSelect && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, marginTop: '8px',
+                    backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`,
+                    borderRadius: '8px', boxShadow: `0 10px 25px ${currentTheme.shadow}`,
+                    padding: '8px 0', zIndex: 1000, width: '220px'
+                  }}>
+                    {locationsList.map(loc => (
+                      <div key={loc} onClick={() => { setSelectedLocation(loc); setShowLocationSelect(false); }}
+                        style={{
+                          padding: '10px 14px', fontSize: '13px', cursor: 'pointer',
+                          color: selectedLocation === loc ? currentTheme.primary : currentTheme.text
+                        }}>
+                        {loc}
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '10px', color: currentTheme.textMuted, fontWeight: '700', textTransform: 'uppercase' }}>Giao đến</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: currentTheme.text, cursor: 'pointer' }} onClick={() => setShowLocationSelect(!showLocationSelect)}>
+                  {selectedLocation} ▾
+                </span>
+              </div>
             </div>
-          )}
 
-          {/* TAB 2: NEWS FEED */}
-          {activeTab === 'feed' && (
-            <div>
+            {/* Smart Search Bar */}
+            <div style={{ flex: 1, position: 'relative', maxWidth: '380px' }}>
+              <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '15px' }}>🔍</span>
+              <input
+                type="text"
+                placeholder="Tìm món, quán hoặc #hashtag..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px 16px 10px 40px', borderRadius: '10px',
+                  border: `1.5px solid ${currentTheme.border}`, backgroundColor: currentTheme.inputBg,
+                  color: currentTheme.text, fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            
+            {/* Quick Actions */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={() => {
+                  if (!isLoggedIn) return navigate('/login');
+                  setActiveTab('feed');
+                  setTimeout(() => {
+                    const el = document.getElementById('writePostBox');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }, 200);
+                }}
+                style={{
+                  padding: '10px 16px', background: currentTheme.primaryGradient,
+                  color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', fontSize: '13px',
+                  cursor: 'pointer', boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}`
+                }}
+              >
+                + Đăng Review
+              </button>
+            </div>
+          </div>
+
+          {/* ACTIVE TAB: ORDER VIEW (DEFAULT INTEGRATED HOME VIEW) */}
+          {(activeTab === 'order' || activeTab === 'feed') && (
+            <>
+              {/* AREA 1: PROMO CAROUSEL & CATEGORIES */}
+              {activeTab === 'order' && (
+                <>
+                  {/* Banner Carousel */}
+                  <div style={{ 
+                    position: 'relative', height: '160px', borderRadius: '16px', overflow: 'hidden', 
+                    boxShadow: `0 10px 25px ${currentTheme.shadow}`, 
+                    background: carouselSlides[carouselIndex].bg,
+                    display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px 32px',
+                    color: 'white', transition: 'all 0.5s ease-in-out'
+                  }}>
+                    <span style={{ 
+                      alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)',
+                      padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '800',
+                      letterSpacing: '1px', marginBottom: '10px'
+                    }}>
+                      {carouselSlides[carouselIndex].badge}
+                    </span>
+                    <h3 style={{ margin: '0 0 6px', fontSize: '22px', fontWeight: '800' }}>
+                      {carouselSlides[carouselIndex].title}
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', opacity: 0.9, fontWeight: '500' }}>
+                      {carouselSlides[carouselIndex].subtitle}
+                    </p>
+
+                    {/* Carousel Indicators */}
+                    <div style={{ position: 'absolute', bottom: '15px', right: '24px', display: 'flex', gap: '6px' }}>
+                      {carouselSlides.map((_, idx) => (
+                        <span key={idx} onClick={() => setCarouselIndex(idx)}
+                          style={{
+                            width: '8px', height: '8px', borderRadius: '50%', cursor: 'pointer',
+                            backgroundColor: carouselIndex === idx ? 'white' : 'rgba(255, 255, 255, 0.4)',
+                            transition: '0.2s'
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Quick Categories */}
+                  <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
+                    {CATEGORIES.map(cat => (
+                      <button
+                        key={cat.name}
+                        onClick={() => setSelectedCategory(cat.name)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
+                          padding: '10px 18px', borderRadius: '24px', fontSize: '13px', fontWeight: '700',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                          backgroundColor: selectedCategory === cat.name ? currentTheme.primary : currentTheme.panel,
+                          color: selectedCategory === cat.name ? 'white' : currentTheme.text,
+                          border: `1.5px solid ${selectedCategory === cat.name ? currentTheme.primary : currentTheme.border}`,
+                          boxShadow: selectedCategory === cat.name ? `0 4px 15px ${currentTheme.primaryGlow}` : 'none'
+                        }}
+                      >
+                        <span style={{ fontSize: '16px' }}>{cat.icon}</span>
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* AREA 2: SOCIAL COMMUNITY - "HÔM NAY ĂN GÌ?" */}
               {/* Write Post Box */}
-              <div style={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '20px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#00e676', fontWeight: '700' }}>Tạo Bài Đăng Cộng Đồng</h3>
+              <div id="writePostBox" style={{ 
+                backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
+                borderRadius: '16px', padding: '20px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
+              }}>
+                <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', color: currentTheme.primary, fontWeight: '800' }}>
+                  Hôm nay ăn gì? Chia sẻ ngay! 😋
+                </h3>
                 <form onSubmit={handleCreatePost}>
                   <textarea
-                    placeholder="Bạn vừa trải nghiệm món ăn gì ngon? Chia sẻ cùng cộng đồng TasteByte nhé..."
+                    placeholder="Vừa phát hiện quán này ngon lắm, mọi người ăn thử đi..."
                     value={newPostContent}
                     onChange={e => setNewPostContent(e.target.value)}
-                    style={{ width: '100%', minHeight: '90px', padding: '12px', backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '8px', color: '#f1f5f9', outline: 'none', resize: 'vertical', fontSize: '14px', boxSizing: 'border-box' }}
+                    style={{ 
+                      width: '100%', minHeight: '80px', padding: '12px', 
+                      backgroundColor: currentTheme.inputBg, border: `1px solid ${currentTheme.border}`, 
+                      borderRadius: '10px', color: currentTheme.text, outline: 'none', 
+                      resize: 'none', fontSize: '14px', boxSizing: 'border-box' 
+                    }}
                   />
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                  
+                  {/* Tag Food drop-down & Image selection */}
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <input
                       type="text"
-                      placeholder="Link hình ảnh món ăn (tùy chọn)..."
+                      placeholder="Link hình chụp đồ ăn ngon..."
                       value={newPostImage}
                       onChange={e => setNewPostImage(e.target.value)}
-                      style={{ flex: 1, minWidth: '200px', padding: '8px 12px', backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '8px', color: '#f1f5f9', outline: 'none', fontSize: '13px' }}
+                      style={{ 
+                        flex: 1, minWidth: '180px', padding: '8px 12px', 
+                        backgroundColor: currentTheme.inputBg, border: `1px solid ${currentTheme.border}`, 
+                        borderRadius: '8px', color: currentTheme.text, outline: 'none', fontSize: '13px' 
+                      }}
                     />
+                    
+                    {/* Tag Food dropdown selector */}
+                    <select
+                      value={taggedFoodId}
+                      onChange={e => setTaggedFoodId(e.target.value)}
+                      style={{
+                        padding: '8px 12px', backgroundColor: currentTheme.inputBg,
+                        border: `1px solid ${currentTheme.border}`, borderRadius: '8px',
+                        color: currentTheme.text, outline: 'none', fontSize: '13px', cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">🏷️ Gắn thẻ món ăn...</option>
+                      {foods.map(food => (
+                        <option key={food._id} value={food._id}>{food.name} ({(food.price || 0).toLocaleString()}đ)</option>
+                      ))}
+                    </select>
+
                     <button
                       type="submit"
                       disabled={postLoading || !newPostContent.trim()}
-                      style={{ padding: '8px 24px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', transition: '0.2s', opacity: (postLoading || !newPostContent.trim()) ? 0.6 : 1 }}
+                      style={{ 
+                        padding: '8px 24px', background: currentTheme.primaryGradient,
+                        color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', 
+                        fontWeight: 'bold', fontSize: '13px', transition: '0.2s', 
+                        opacity: (postLoading || !newPostContent.trim()) ? 0.6 : 1,
+                        boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}`
+                      }}
                     >
                       {postLoading ? 'Đang đăng...' : 'Đăng Bài 🚀'}
                     </button>
@@ -752,39 +1242,49 @@ const Home = () => {
                 </form>
               </div>
 
-              {/* Feed List */}
+              {/* Feed Lists */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📢</span> Bảng Tin Món Ngon Cộng Đồng
+                </h3>
                 {posts.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', color: '#64748b' }}>
-                    <div style={{ fontSize: '32px', marginBottom: '10px' }}>📢</div>
-                    <p>Chưa có bài đăng nào trên Bảng tin. Hãy là người đầu tiên chia sẻ món ngon!</p>
+                  <div style={{ 
+                    textAlign: 'center', padding: '30px', backgroundColor: currentTheme.panel, 
+                    border: `1px solid ${currentTheme.border}`, borderRadius: '16px', color: currentTheme.textMuted 
+                  }}>
+                    Chưa có bài đăng nào. Hãy là người đầu tiên chia sẻ món ăn ngon!
                   </div>
                 ) : (
-                  posts.map(post => {
+                  (activeTab === 'order' ? posts.slice(0, 3) : posts).map(post => {
                     const isLiked = currentUser && post.reacts && post.reacts.includes(currentUser._id);
                     return (
-                      <div key={post._id} style={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                      <div key={post._id} style={{ 
+                        backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
+                        borderRadius: '16px', padding: '18px', boxShadow: `0 8px 24px ${currentTheme.shadow}`
+                      }}>
                         {/* Post Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#1f2937', border: '2px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}>
+                            <div style={{ 
+                              width: '38px', height: '38px', borderRadius: '50%', backgroundColor: currentTheme.bg, 
+                              border: `2px solid ${currentTheme.primary}`, display: 'flex', alignItems: 'center', 
+                              justifyContent: 'center', fontSize: '16px', fontWeight: 'bold' 
+                            }}>
                               {post.author_id?.role === 'merchant' ? '🏪' : '👤'}
                             </div>
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontWeight: 'bold', color: '#f1f5f9' }}>{post.author_id?.full_name || 'Khách Hàng Ẩn Danh'}</span>
-                                {post.author_id?.role === 'merchant' && <span style={{ fontSize: '10px', backgroundColor: '#10b981', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>Đối Tác</span>}
+                                <span style={{ fontWeight: 'bold', color: currentTheme.text }}>{post.author_id?.full_name || 'Khách Hàng'}</span>
+                                {post.author_id?.role === 'merchant' && <span style={{ fontSize: '10px', backgroundColor: currentTheme.primary, color: 'white', padding: '2px 6px', borderRadius: '4px' }}>Đối Tác</span>}
                               </div>
-                              <span style={{ fontSize: '11px', color: '#64748b' }}>{new Date(post.createdAt).toLocaleString('vi-VN')}</span>
+                              <span style={{ fontSize: '11px', color: currentTheme.textMuted }}>{new Date(post.createdAt).toLocaleString('vi-VN')}</span>
                             </div>
                           </div>
 
-                          {/* Delete Action if owner/admin */}
                           {currentUser && (post.author_id?._id === currentUser._id || currentUser.role === 'admin') && (
                             <button
                               onClick={() => handleDeletePost(post._id)}
-                              style={{ backgroundColor: 'transparent', border: 'none', color: '#ff424e', cursor: 'pointer', fontSize: '14px' }}
-                              title="Xóa bài viết"
+                              style={{ backgroundColor: 'transparent', border: 'none', color: '#ff424e', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
                             >
                               🗑️ Xóa
                             </button>
@@ -792,27 +1292,56 @@ const Home = () => {
                         </div>
 
                         {/* Post Content */}
-                        <p style={{ fontSize: '14px', lineHeight: '1.6', color: '#e2e8f0', margin: '0 0 14px 0', whiteSpace: 'pre-line' }}>{post.content}</p>
+                        <p style={{ fontSize: '14px', lineHeight: '1.5', color: currentTheme.text, margin: '0 0 12px 0', whiteSpace: 'pre-line' }}>
+                          {post.content}
+                        </p>
                         
                         {/* Attachments */}
                         {post.images && post.images.length > 0 && post.images[0] && (
-                          <div style={{ width: '100%', maxHeight: '350px', overflow: 'hidden', borderRadius: '8px', marginBottom: '14px', border: '1px solid #1f2937' }}>
-                            <img src={post.images[0]} alt="Post media" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                          <div style={{ width: '100%', maxHeight: '280px', overflow: 'hidden', borderRadius: '12px', marginBottom: '12px', border: `1px solid ${currentTheme.border}` }}>
+                            <img src={post.images[0]} alt="Review media" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                           </div>
                         )}
 
-                        {/* Reactions and actions bar */}
-                        <div style={{ display: 'flex', gap: '20px', borderTop: '1px solid #1f2937', paddingTop: '12px', fontSize: '13px' }}>
+                        {/* TAGGED PRODUCT LINK (UX UNIQUE BENEFIT) */}
+                        {post.linked_food && (
+                          <div style={{ 
+                            backgroundColor: currentTheme.bg, border: `1.5px solid ${currentTheme.border}`,
+                            borderRadius: '12px', padding: '12px', marginBottom: '12px', display: 'flex',
+                            alignItems: 'center', gap: '12px', justifyContent: 'space-between'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <img src={post.linked_food.image} alt={post.linked_food.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }} />
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{post.linked_food.name}</span>
+                                <span style={{ fontSize: '12px', color: currentTheme.primary, fontWeight: '700' }}>{(post.linked_food.price || 0).toLocaleString()}đ</span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => addToCart(post.linked_food)}
+                              style={{
+                                padding: '8px 16px', background: currentTheme.primaryGradient,
+                                color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer',
+                                fontWeight: '700', fontSize: '12px', boxShadow: `0 2px 10px ${currentTheme.primaryGradientGlow}`
+                              }}
+                            >
+                              ⚡ Đặt Ngay Món Này
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Reactions and comments actions */}
+                        <div style={{ display: 'flex', gap: '20px', borderTop: `1px solid ${currentTheme.border}`, paddingTop: '10px', fontSize: '13px' }}>
                           <button
                             onClick={() => handleLikePost(post._id)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: 'none', color: isLiked ? '#ef4444' : '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: 'none', color: isLiked ? '#ff424e' : currentTheme.textMuted, cursor: 'pointer', fontWeight: 'bold' }}
                           >
                             <span>{isLiked ? '❤️' : '🤍'}</span> Thích ({post.reacts ? post.reacts.length : 0})
                           </button>
 
                           <button
                             onClick={() => toggleComments(post._id)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: 'none', color: currentTheme.textMuted, cursor: 'pointer', fontWeight: 'bold' }}
                           >
                             <span>💬</span> Bình luận ({post.Comments ? post.Comments.length : 0})
                           </button>
@@ -820,43 +1349,41 @@ const Home = () => {
 
                         {/* Comments Drawer */}
                         {commentsOpen[post._id] && (
-                          <div style={{ marginTop: '14px', borderTop: '1px dashed #1f2937', paddingTop: '14px' }}>
-                            {/* Comment Write Box */}
+                          <div style={{ marginTop: '12px', borderTop: `1px dashed ${currentTheme.border}`, paddingTop: '12px' }}>
                             {isLoggedIn && (
-                              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
                                 <input
                                   type="text"
-                                  placeholder="Nhập bình luận phản hồi..."
+                                  placeholder="Phản hồi món ngon..."
                                   value={commentInputs[post._id] || ''}
                                   onChange={e => setCommentInputs(prev => ({ ...prev, [post._id]: e.target.value }))}
                                   onKeyDown={e => { if (e.key === 'Enter') handleAddComment(post._id); }}
-                                  style={{ flex: 1, padding: '8px 12px', backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '6px', color: '#f1f5f9', fontSize: '13px', outline: 'none' }}
+                                  style={{ flex: 1, padding: '8px 12px', backgroundColor: currentTheme.inputBg, border: `1px solid ${currentTheme.border}`, borderRadius: '8px', color: currentTheme.text, fontSize: '12px', outline: 'none' }}
                                 />
                                 <button
                                   onClick={() => handleAddComment(post._id)}
-                                  style={{ padding: '8px 16px', backgroundColor: 'rgba(0, 230, 118, 0.1)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.2)', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                                  style={{ padding: '8px 14px', backgroundColor: currentTheme.activeBg, color: currentTheme.primary, border: `1px solid ${currentTheme.primary}44`, borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
                                 >
                                   Gửi
                                 </button>
                               </div>
                             )}
 
-                            {/* Comment List */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxH: '250px', overflowY: 'auto' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxH: '200px', overflowY: 'auto' }}>
                               {!post.Comments || post.Comments.length === 0 ? (
-                                <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0' }}>Chưa có bình luận nào. Hãy bắt đầu cuộc trò chuyện!</p>
+                                <p style={{ fontSize: '11px', color: currentTheme.textMuted, margin: '2px 0' }}>Chưa có bình luận.</p>
                               ) : (
                                 post.Comments.map(c => (
-                                  <div key={c._id} style={{ display: 'flex', gap: '8px', backgroundColor: '#0b0f19', padding: '10px', borderRadius: '8px', border: '1px solid #1f2937' }}>
-                                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>
-                                      {c.user_id?.role === 'merchant' ? '🏪' : '👤'}
+                                  <div key={c._id} style={{ display: 'flex', gap: '8px', backgroundColor: currentTheme.bg, padding: '8px 10px', borderRadius: '8px', border: `1px solid ${currentTheme.border}` }}>
+                                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: currentTheme.panel, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', flexShrink: 0 }}>
+                                      👤
                                     </div>
-                                    <div style={{ flex: 1 }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                                        <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#f1f5f9' }}>{c.user_id?.full_name || 'Thành Viên'}</span>
-                                        <span style={{ fontSize: '10px', color: '#64748b' }}>{new Date(c.created_at || Date.now()).toLocaleString('vi-VN')}</span>
+                                        <span style={{ fontWeight: 'bold', fontSize: '11px', color: currentTheme.text }}>{c.user_id?.full_name || 'Thành Viên'}</span>
+                                        <span style={{ fontSize: '9px', color: currentTheme.textMuted }}>{new Date(c.created_at || Date.now()).toLocaleDateString()}</span>
                                       </div>
-                                      <p style={{ fontSize: '12px', color: '#cbd5e1', margin: 0 }}>{c.content}</p>
+                                      <p style={{ fontSize: '11px', color: currentTheme.text, margin: 0 }}>{c.content}</p>
                                     </div>
                                   </div>
                                 ))
@@ -868,266 +1395,706 @@ const Home = () => {
                     );
                   })
                 )}
+                
+                {activeTab === 'order' && posts.length > 3 && (
+                  <button 
+                    onClick={() => setActiveTab('feed')}
+                    style={{
+                      padding: '10px 0', border: `1px solid ${currentTheme.border}`, 
+                      backgroundColor: currentTheme.panel, color: currentTheme.primary,
+                      fontWeight: '700', borderRadius: '10px', cursor: 'pointer', fontSize: '13px'
+                    }}
+                  >
+                    Xem thêm nhiều bài review cộng đồng ▾
+                  </button>
+                )}
               </div>
-            </div>
+
+              {/* AREA 3: E-COMMERCE - MÓN NGON GỢI Ý */}
+              {activeTab === 'order' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ 
+                    backgroundColor: currentTheme.panel, padding: '14px 20px', borderRadius: '12px',
+                    fontWeight: '800', color: currentTheme.primary, border: `1px solid ${currentTheme.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    boxShadow: `0 4px 15px ${currentTheme.shadow}`
+                  }}>
+                    <span>🔥 MÓN NGON KHUYẾN NGHỊ GẦN BẠN</span>
+                    {!loading && (
+                      <span style={{ fontSize: '12px', color: currentTheme.textMuted, fontWeight: '400' }}>
+                        Có {filteredFoods.length} món
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ 
+                    backgroundColor: currentTheme.panel, padding: '20px', borderRadius: '12px',
+                    border: `1px solid ${currentTheme.border}`, boxShadow: `0 10px 30px ${currentTheme.shadow}`
+                  }}>
+                    {loading && (
+                      <div style={{ textAlign: 'center', padding: '40px 0', color: currentTheme.textMuted }}>
+                        <p style={{ fontSize: '15px' }}>Đang tải danh sách món ăn từ các cửa hàng...</p>
+                      </div>
+                    )}
+
+                    {!loading && error && (
+                      <div style={{ textAlign: 'center', padding: '40px 0', color: '#ef4444' }}>
+                        <p>{error}</p>
+                      </div>
+                    )}
+
+                    {!loading && !error && filteredFoods.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '40px 0', color: currentTheme.textMuted }}>
+                        <p style={{ fontSize: '15px', marginBottom: '4px' }}>Không tìm thấy món ăn phù hợp</p>
+                        <p style={{ fontSize: '12px' }}>Thử lọc từ khóa khác xem sao!</p>
+                      </div>
+                    )}
+
+                    {!loading && !error && filteredFoods.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
+                        {filteredFoods.map(food => (
+                          <FoodCard
+                            key={food._id}
+                            item={food}
+                            addToCart={addToCart}
+                            handleBuyNow={() => handleDirectCheckout(food)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
-
-          {/* TAB 4: CHAT SYSTEM */}
+          {/* TAB 3: FULL SCREEN CHAT MESSENGER */}
           {activeTab === 'chat' && (
-            <div style={{ display: 'flex', height: '550px', backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
-              {/* Chat - Left Pane: Contact list */}
-              <div style={{ width: '35%', borderRight: '1px solid #1f2937', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '14px', borderBottom: '1px solid #1f2937', fontWeight: 'bold', color: '#00e676', fontSize: '15px' }}>Hội thoại</div>
+            <div style={{ 
+              display: 'flex', height: '560px', backgroundColor: currentTheme.panel, 
+              border: `1px solid ${currentTheme.border}`, borderRadius: '16px', overflow: 'hidden', 
+              boxShadow: `0 10px 30px ${currentTheme.shadow}` 
+            }}>
+              {/* Chat Left Column */}
+              <div style={{ width: '35%', borderRight: `1px solid ${currentTheme.border}`, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '16px', borderBottom: `1px solid ${currentTheme.border}`, fontWeight: '800', color: currentTheme.primary, fontSize: '15px' }}>
+                  Hội thoại
+                </div>
                 
-                {/* 🔍 Search box (matching email/username only) */}
-                <div style={{ padding: '10px 14px', borderBottom: '1px solid #1f2937' }}>
+                <div style={{ padding: '10px 14px', borderBottom: `1px solid ${currentTheme.border}` }}>
                   <input
                     type="text"
-                    placeholder="Tìm theo username (email)..."
+                    placeholder="Tìm theo username..."
                     value={chatSearchQuery}
                     onChange={(e) => setChatSearchQuery(e.target.value)}
                     style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      backgroundColor: '#0b0f19',
-                      border: '1px solid #1f2937',
-                      borderRadius: '6px',
-                      color: '#f1f5f9',
-                      fontSize: '12px',
-                      outline: 'none',
-                      boxSizing: 'border-box'
+                      width: '100%', padding: '8px 12px', backgroundColor: currentTheme.bg,
+                      border: `1px solid ${currentTheme.border}`, borderRadius: '8px',
+                      color: currentTheme.text, fontSize: '12px', outline: 'none', boxSizing: 'border-box'
                     }}
                   />
                 </div>
 
                 <div style={{ flex: 1, overflowY: 'auto' }}>
-                  {(() => {
-                    const filteredContacts = chatContacts.filter(c => {
-                      if (!chatSearchQuery.trim()) return true;
-                      return c.email && c.email.toLowerCase().includes(chatSearchQuery.toLowerCase());
-                    });
-                    
-                    if (filteredContacts.length === 0) {
-                      return <div style={{ padding: '20px', color: '#64748b', fontSize: '13px', textAlign: 'center' }}>Không tìm thấy người liên lạc.</div>;
-                    }
-                    
-                    return filteredContacts.map(c => {
+                  {chatContacts
+                    .filter(c => !chatSearchQuery || (c.email && c.email.toLowerCase().includes(chatSearchQuery.toLowerCase())))
+                    .map(c => {
                       const isActive = selectedContact && selectedContact._id === c._id;
                       return (
-                        <div
-                          key={c._id}
-                          onClick={() => handleSelectContact(c)}
+                        <div key={c._id} onClick={() => handleSelectContact(c)}
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            padding: '12px 14px',
-                            borderBottom: '1px solid #1f2937',
-                            cursor: 'pointer',
-                            backgroundColor: isActive ? 'rgba(0, 230, 118, 0.08)' : 'transparent',
+                            display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px',
+                            borderBottom: `1px solid ${currentTheme.border}`, cursor: 'pointer',
+                            backgroundColor: isActive ? currentTheme.activeBg : 'transparent',
                             transition: '0.2s'
                           }}
-                          onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#1f2937'; }}
-                          onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
                         >
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#1f2937', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', border: c.isVirtual ? '1px solid #00e676' : '1px solid #64748b' }}>
+                          <div style={{ 
+                            width: '34px', height: '34px', borderRadius: '50%', backgroundColor: currentTheme.bg, 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', 
+                            border: `1px solid ${currentTheme.border}`, flexShrink: 0
+                          }}>
                             {c.role === 'merchant' ? '🏪' : c.role === 'driver' ? '🛵' : '👤'}
                           </div>
                           <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#f1f5f9', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{c.full_name}</div>
-                            <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'capitalize' }}>{c.role === 'customer' ? 'Khách' : c.role === 'merchant' ? 'Cửa Hàng' : c.role === 'driver' ? 'Shipper' : c.role}</div>
+                            <div style={{ fontSize: '13px', fontWeight: '700', color: currentTheme.text, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{c.full_name}</div>
+                            <div style={{ fontSize: '10px', color: currentTheme.textMuted, textTransform: 'capitalize' }}>{c.role === 'customer' ? 'Khách hàng' : c.role === 'merchant' ? 'Cửa Hàng' : c.role === 'driver' ? 'Shipper' : c.role}</div>
                           </div>
                         </div>
                       );
-                    });
-                  })()}
+                    })}
                 </div>
               </div>
 
-              {/* Chat - Right Pane: Dialog view */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              {/* Chat Right Column */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: currentTheme.bg }}>
                 {selectedContact ? (
                   <>
-                    {/* Header */}
-                    <div style={{ padding: '14px', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#0b0f19' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#1f2937', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>
-                        {selectedContact.role === 'merchant' ? '🏪' : selectedContact.role === 'driver' ? '🛵' : '👤'}
-                      </div>
-                      <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#f1f5f9' }}>{selectedContact.full_name}</span>
+                    <div style={{ padding: '14px 18px', borderBottom: `1px solid ${currentTheme.border}`, display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: currentTheme.panel }}>
+                      <span style={{ fontSize: '18px' }}>{selectedContact.role === 'merchant' ? '🏪' : selectedContact.role === 'driver' ? '🛵' : '👤'}</span>
+                      <span style={{ fontWeight: 'bold', fontSize: '14px' }}>{selectedContact.full_name}</span>
                     </div>
 
-                    {/* Messages Area */}
-                    <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: '#0b0f19' }}>
+                    <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {chatMessages.length === 0 ? (
-                        <div style={{ margin: 'auto', color: '#64748b', fontSize: '12px', textAlign: 'center' }}>Vẫy tay chào nhau để bắt đầu chat! 👋</div>
+                        <div style={{ margin: 'auto', color: currentTheme.textMuted, fontSize: '12px' }}>Gửi tin nhắn để bắt đầu cuộc trò chuyện! 👋</div>
                       ) : (
                         chatMessages.map((m, idx) => {
                           const isMe = m.sender_id === 'me' || (currentUser && m.sender_id === currentUser._id);
                           return (
-                            <div
-                              key={m._id || idx}
-                              style={{
-                                display: 'flex',
-                                justifyContent: isMe ? 'flex-end' : 'flex-start',
-                                width: '100%'
-                              }}
-                            >
-                              <div
-                                style={{
-                                  maxWidth: '70%',
-                                  padding: '8px 12px',
-                                  borderRadius: '12px',
-                                  fontSize: '13px',
-                                  lineHeight: '1.4',
-                                  backgroundColor: isMe ? '#10b981' : '#1f2937',
-                                  color: 'white',
-                                  borderRadiusStyle: isMe ? '12px 12px 0 12px' : '12px 12px 12px 0'
-                                }}
-                              >
+                            <div key={m._id || idx} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                              <div style={{
+                                maxWidth: '70%', padding: '10px 14px', borderRadius: '12px', fontSize: '13px',
+                                backgroundColor: isMe ? currentTheme.primary : currentTheme.panel,
+                                color: isMe ? 'white' : currentTheme.text,
+                                border: isMe ? 'none' : `1px solid ${currentTheme.border}`,
+                                borderRadiusStyle: isMe ? '12px 12px 0 12px' : '12px 12px 12px 0'
+                              }}>
                                 {m.content}
                               </div>
                             </div>
                           );
                         })
                       )}
+                      <div ref={chatBottomRef} />
                     </div>
 
-                    {/* Message Box Input */}
-                    <form onSubmit={handleSendMessage} style={{ padding: '12px', borderTop: '1px solid #1f2937', display: 'flex', gap: '8px' }}>
+                    <form onSubmit={(e) => handleSendMessage(e, newMessageText, selectedContact, () => setNewMessageText(''))} 
+                      style={{ padding: '12px', borderTop: `1px solid ${currentTheme.border}`, display: 'flex', gap: '8px', backgroundColor: currentTheme.panel }}>
                       <input
                         type="text"
-                        placeholder="Nhập nội dung nhắn..."
+                        placeholder="Nhập tin nhắn..."
                         value={newMessageText}
                         onChange={e => setNewMessageText(e.target.value)}
-                        style={{ flex: 1, padding: '10px 14px', backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '8px', color: '#f1f5f9', fontSize: '13px', outline: 'none' }}
+                        style={{ 
+                          flex: 1, padding: '10px 14px', backgroundColor: currentTheme.bg, 
+                          border: `1px solid ${currentTheme.border}`, borderRadius: '8px', 
+                          color: currentTheme.text, fontSize: '13px', outline: 'none' 
+                        }}
                       />
-                      <button
-                        type="submit"
-                        style={{ padding: '10px 20px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
-                      >
+                      <button type="submit" style={{ padding: '10px 20px', backgroundColor: currentTheme.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
                         Gửi
                       </button>
                     </form>
                   </>
                 ) : (
-                  <div style={{ margin: 'auto', textAlign: 'center', color: '#64748b' }}>
+                  <div style={{ margin: 'auto', textAlign: 'center', color: currentTheme.textMuted }}>
                     <div style={{ fontSize: '48px', marginBottom: '10px' }}>💬</div>
-                    <p style={{ fontSize: '14px' }}>Chọn một đối tác chat ở danh sách bên trái để kết nối</p>
+                    <p>Chọn một người liên lạc từ cột bên trái để trò chuyện.</p>
                   </div>
                 )}
               </div>
             </div>
           )}
 
+          {/* TAB 4: MY ORDERS VIEW */}
+          {activeTab === 'orders' && (
+            <div style={{ 
+              backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
+              borderRadius: '16px', padding: '24px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
+            }}>
+              <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: '800', color: currentTheme.primary }}>
+                🛒 Lịch Sử Đơn Hàng Của Tôi
+              </h3>
+              
+              {ordersLoading ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: currentTheme.textMuted }}>Đang tải thông tin đơn hàng...</div>
+              ) : myOrders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: currentTheme.textMuted }}>
+                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>🍽️</div>
+                  <p>Bạn chưa đặt đơn hàng nào trên hệ thống.</p>
+                  <button onClick={() => setActiveTab('order')} style={{ marginTop: '12px', padding: '8px 20px', backgroundColor: currentTheme.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    Đặt món ngay
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {myOrders.map(order => (
+                    <div key={order._id} style={{ 
+                      border: `1px solid ${currentTheme.border}`, borderRadius: '12px', 
+                      padding: '16px', backgroundColor: currentTheme.bg 
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${currentTheme.border}`, paddingBottom: '10px', marginBottom: '10px' }}>
+                        <div>
+                          <span style={{ fontWeight: 'bold', fontSize: '14px' }}>Cửa Hàng: {order.store_id?.store_name || 'TasteByte Partner'}</span>
+                          <div style={{ fontSize: '11px', color: currentTheme.textMuted, marginTop: '2px' }}>Mã đơn: {order._id}</div>
+                        </div>
+                        <span style={{
+                          backgroundColor: order.status === 'completed' ? '#065f46' : order.status === 'cancelled' ? '#991b1b' : '#854d0e',
+                          color: 'white', fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px', height: 'fit-content'
+                        }}>
+                          {order.status === 'completed' ? 'Thành công' : order.status === 'cancelled' ? 'Đã hủy' : 'Đang xử lý'}
+                        </span>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+                        {order.items?.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: currentTheme.textMuted }}>• {item.name} x{item.quantity}</span>
+                            <span>{(item.price * item.quantity).toLocaleString()}đ</span>
+                          </div>
+                        ))}
+                      </div>
 
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px dashed ${currentTheme.border}`, marginTop: '10px', paddingTop: '10px', fontSize: '14px', fontWeight: '700' }}>
+                        <span>Tổng thanh toán:</span>
+                        <span style={{ color: currentTheme.primary }}>{(order.total_price || 0).toLocaleString()}đ</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5: DETAILED NOTIFICATIONS VIEW */}
+          {activeTab === 'notifications' && (
+            <div style={{ 
+              backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
+              borderRadius: '16px', padding: '24px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
+            }}>
+              <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: '800', color: currentTheme.primary }}>
+                🔔 Hộp Thư Thông Báo
+              </h3>
+              
+              {notifications.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: currentTheme.textMuted }}>
+                  Không có thông báo nào.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {notifications.map(n => (
+                    <div key={n._id} style={{
+                      padding: '14px 18px', borderRadius: '12px', border: `1px solid ${currentTheme.border}`,
+                      backgroundColor: n.is_read ? currentTheme.bg : currentTheme.activeBg,
+                      position: 'relative'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '14px' }}>{n.title}</span>
+                        <span style={{ fontSize: '11px', color: currentTheme.textMuted }}>{new Date(n.createdAt).toLocaleDateString('vi-VN')}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '13px', color: currentTheme.text }}>{n.message}</p>
+                      {!n.is_read && <span style={{ position: 'absolute', top: '15px', right: '15px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: currentTheme.primary }} />}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 
         {/* ==============================================
-            RIGHT SIDEBAR: FRIENDS & TRENDING HOT REVIEWS
+            RIGHT COLUMN (SIDEBAR): MINI CART & INTERACTION (25%)
             ============================================== */}
-        <div style={{
-          width: rightSidebarOpen ? '20%' : '0px',
-          minWidth: rightSidebarOpen ? '220px' : '0px',
-          opacity: rightSidebarOpen ? 1 : 0,
-          pointerEvents: rightSidebarOpen ? 'all' : 'none',
-          flexShrink: 0,
-          backgroundColor: '#111827',
-          border: rightSidebarOpen ? '1px solid #1f2937' : 'none',
-          borderRadius: '14px',
-          padding: rightSidebarOpen ? '16px' : '0px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          overflow: 'hidden',
-          position: 'relative'
+        <div style={{ 
+          width: '25%', minWidth: '260px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '20px',
+          position: 'sticky', top: '90px'
         }}>
+          
+          {/* GIỎ HÀNG NHỎ (MINI CART) */}
+          <div style={{ 
+            backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
+            borderRadius: '16px', padding: '18px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
+          }}>
+            <h4 style={{ margin: '0 0 14px 0', fontSize: '13px', textTransform: 'uppercase', color: currentTheme.primary, letterSpacing: '1px', borderBottom: `1px solid ${currentTheme.border}`, paddingBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>🛒 {groupOrderActive ? 'GIỎ HÀNG NHÓM 👥' : 'GIỎ HÀNG NHANH'}</span>
+              {groupOrderActive && (
+                <button onClick={cancelGroupOrder} style={{ backgroundColor: 'transparent', border: 'none', color: '#ff424e', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                  Hủy nhóm
+                </button>
+              )}
+            </h4>
 
-
-          {/* Trending KOL Reviews */}
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '1px', borderBottom: '1px solid #1f2937', paddingBottom: '8px' }}>HOT REVIEW</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {hotReviews.map(rev => (
-              <div 
-                key={rev.id} 
-                onClick={() => {
-                  setActiveTab('feed');
-                  loadPosts();
-                }}
-                style={{ cursor: 'pointer', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#0b0f19', border: '1px solid #1f2937' }}
-              >
-                <img src={rev.img} alt={rev.title} style={{ width: '100%', height: '80px', objectFit: 'cover' }} />
-                <div style={{ padding: '8px' }}>
-                  <div style={{ fontSize: '11px', color: '#00e676', fontWeight: 'bold' }}>{rev.author}</div>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#f1f5f9', margin: '2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rev.title}</div>
-                  <div style={{ fontSize: '10px', color: '#eab308' }}>★ {rev.rating}</div>
-                </div>
+            {/* Cart Items List */}
+            {(!groupOrderActive && cart.length === 0) || (groupOrderActive && groupItems.length === 0) ? (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: currentTheme.textMuted, fontSize: '13px' }}>
+                Giỏ hàng trống. Click "+" trên thẻ món ăn để thêm.
               </div>
-            ))}
-          </div>
-        </div>
+            ) : (
+              <div>
+                <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* GROUP ORDER MINI CART RENDERING */}
+                  {groupOrderActive ? (
+                    // Group by buyer
+                    ['me', ...groupMembers.map(m => m.id)].map(bId => {
+                      const buyerName = bId === 'me' ? 'Bạn (Chủ nhóm)' : groupMembers.find(m => m.id === bId)?.name || 'Thành viên';
+                      const itemsForBuyer = groupItems.filter(item => item.buyer_id === bId);
+                      if (itemsForBuyer.length === 0) return null;
+                      
+                      return (
+                        <div key={bId} style={{ borderBottom: `1px dashed ${currentTheme.border}`, paddingBottom: '6px', marginBottom: '6px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: '700', color: currentTheme.primary, marginBottom: '4px' }}>👤 {buyerName}</div>
+                          {itemsForBuyer.map(item => (
+                            <div key={item.id + '_' + bId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', marginBottom: '4px' }}>
+                              <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '120px' }}>{item.name}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <button onClick={() => updateQuantity(item.id, item.quantity - 1, bId)} style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>-</button>
+                                <span>{item.quantity}</span>
+                                <button onClick={() => updateQuantity(item.id, item.quantity + 1, bId)} style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>+</button>
+                                <span style={{ fontWeight: 'bold', marginLeft: '6px' }}>{(item.price * item.quantity).toLocaleString()}đ</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    /* SINGLE CART MINI CART RENDERING */
+                    cart.map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', borderBottom: `1px solid ${currentTheme.border}`, paddingBottom: '8px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                          <span style={{ fontWeight: 'bold', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', width: '120px' }}>{item.name}</span>
+                          <span style={{ fontSize: '11px', color: currentTheme.textMuted }}>{item.price.toLocaleString()}đ</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>-</button>
+                          <span style={{ fontWeight: 'bold' }}>{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>+</button>
+                          <button onClick={() => removeFromCart(item.id)} style={{ background: 'transparent', border: 'none', color: '#ff424e', cursor: 'pointer', marginLeft: '6px' }}>✕</button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
 
-        {/* Toggle Right Sidebar button floating */}
-        <button
-          onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            width: '46px',
-            height: '46px',
-            borderRadius: '50%',
-            backgroundColor: '#10b981',
-            color: 'white',
-            border: 'none',
-            fontSize: '18px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(16,185,129,0.4)',
-            zIndex: 99,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: '0.2s',
-          }}
-          title={rightSidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
-        >
-          {rightSidebarOpen ? '➡️' : '🔥'}
-        </button>
+                {/* Subtotal, Shipping, Total */}
+                <div style={{ borderTop: `1px solid ${currentTheme.border}`, marginTop: '12px', paddingTop: '10px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span>Tổng tiền món:</span>
+                    <span style={{ fontWeight: 'bold' }}>
+                      {(groupOrderActive ? groupItems : cart).reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString()}đ
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: currentTheme.textMuted }}>
+                    <span>Phí ship ước tính:</span>
+                    <span>{groupOrderActive ? '15.000đ' : 'Miễn phí'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '800', borderTop: `1.5px solid ${currentTheme.border}`, paddingTop: '8px' }}>
+                    <span>Cần thanh toán:</span>
+                    <span style={{ color: currentTheme.primary }}>
+                      {((groupOrderActive ? groupItems : cart).reduce((sum, item) => sum + (item.price * item.quantity), 0) + (groupOrderActive ? 15000 : 0)).toLocaleString()}đ
+                    </span>
+                  </div>
+                </div>
+
+                {/* Checkout Button */}
+                {groupOrderActive ? (
+                  <button 
+                    onClick={() => setShowSplitBillModal(true)}
+                    style={{
+                      width: '100%', padding: '12px 0', background: currentTheme.primaryGradient,
+                      color: 'white', border: 'none', borderRadius: '10px', marginTop: '14px',
+                      cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}`
+                    }}
+                  >
+                    👥 Chia Tiền & Đặt Đơn Nhóm
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => navigate('/checkout', { state: { selectedItems: cart } })}
+                    style={{
+                      width: '100%', padding: '12px 0', background: currentTheme.primaryGradient,
+                      color: 'white', border: 'none', borderRadius: '10px', marginTop: '14px',
+                      cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}`
+                    }}
+                  >
+                    💳 Tiến Hành Thanh Toán
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* BẠN BÈ ONLINE & RỦ ĂN CHUNG */}
+          <div style={{ 
+            backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
+            borderRadius: '16px', padding: '18px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
+          }}>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: currentTheme.textMuted, letterSpacing: '1px', borderBottom: `1px solid ${currentTheme.border}`, paddingBottom: '8px' }}>
+              🟢 BẠN BÈ ONLINE
+            </h4>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {onlineFriends.map(friend => (
+                <div key={friend.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                    onClick={() => handleSelectChatPopupContact(friend)}>
+                    <div style={{ 
+                      width: '32px', height: '32px', borderRadius: '50%', backgroundColor: currentTheme.bg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', position: 'relative'
+                    }}>
+                      {friend.avatar}
+                      <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00e676', border: `1.5px solid ${currentTheme.panel}` }} />
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: currentTheme.text }}>{friend.name}</span>
+                  </div>
+
+                  <button 
+                    disabled={groupOrderActive}
+                    onClick={() => initiateGroupOrder(friend)}
+                    style={{
+                      padding: '5px 10px', backgroundColor: groupOrderActive ? currentTheme.border : currentTheme.activeBg,
+                      color: groupOrderActive ? currentTheme.textMuted : currentTheme.primary,
+                      border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold',
+                      cursor: groupOrderActive ? 'not-allowed' : 'pointer', transition: '0.2s'
+                    }}
+                  >
+                    Rủ ăn 🤝
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Trending Reviews */}
+          <div style={{ 
+            backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
+            borderRadius: '16px', padding: '18px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
+          }}>
+            <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: currentTheme.textMuted, letterSpacing: '1px', borderBottom: `1px solid ${currentTheme.border}`, paddingBottom: '8px' }}>
+              🔥 REVIEW HẤP DẪN
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {hotReviews.map(rev => (
+                <div key={rev.id} onClick={() => { setActiveTab('feed'); loadPosts(); }}
+                  style={{ cursor: 'pointer', borderRadius: '8px', overflow: 'hidden', backgroundColor: currentTheme.bg, border: `1px solid ${currentTheme.border}` }}>
+                  <img src={rev.img} alt={rev.title} style={{ width: '100%', height: '70px', objectFit: 'cover' }} />
+                  <div style={{ padding: '8px' }}>
+                    <div style={{ fontSize: '11px', color: currentTheme.primary, fontWeight: 'bold' }}>{rev.author}</div>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: currentTheme.text, margin: '2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rev.title}</div>
+                    <div style={{ fontSize: '10px', color: '#eab308' }}>★ {rev.rating}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
 
       </div>
 
+      {/* ==============================================
+          FLOATING MESSENGER CHAT BUBBLE WIDGET
+          ============================================== */}
+      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+        
+        {/* Chat window popup */}
+        {isChatPopupOpen && chatPopupContact && (
+          <div style={{
+            width: '320px', height: '400px', backgroundColor: currentTheme.panel,
+            border: `1.5px solid ${currentTheme.border}`, borderRadius: '16px',
+            boxShadow: `0 12px 40px ${currentTheme.shadow}`, display: 'flex', flexDirection: 'column',
+            overflow: 'hidden', animation: 'slideUp 0.25s ease-out'
+          }}>
+            {/* Header */}
+            <div style={{ 
+              padding: '12px 16px', background: currentTheme.primaryGradient,
+              color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>{chatPopupContact.avatar || '👤'}</span>
+                <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{chatPopupContact.name || chatPopupContact.full_name}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => setIsChatPopupOpen(false)} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold' }}>✕</button>
+              </div>
+            </div>
 
+            {/* Chat Body messages */}
+            <div style={{ flex: 1, padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: currentTheme.bg }}>
+              {chatMessages.length === 0 ? (
+                <div style={{ margin: 'auto', color: currentTheme.textMuted, fontSize: '11px', textAlign: 'center' }}>Vẫy tay chào nhau đi nào! 👋</div>
+              ) : (
+                chatMessages
+                  .filter(m => m.sender_id === (chatPopupContact._id || chatPopupContact.id) || m.receiver_id === (chatPopupContact._id || chatPopupContact.id) || m.receiver_id === 'me' || m.sender_id === 'me')
+                  .map((m, idx) => {
+                    const isMe = m.sender_id === 'me' || (currentUser && m.sender_id === currentUser._id);
+                    const isSys = m.sender_id === 'system_default_1';
+                    return (
+                      <div key={m._id || idx} style={{ display: 'flex', justifyContent: isSys ? 'center' : isMe ? 'flex-end' : 'flex-start', width: '100%' }}>
+                        <div style={{
+                          maxWidth: '80%', padding: '8px 12px', borderRadius: '10px', fontSize: '12px',
+                          backgroundColor: isSys ? 'rgba(234, 88, 12, 0.1)' : isMe ? currentTheme.primary : currentTheme.panel,
+                          color: isSys ? currentTheme.primary : isMe ? 'white' : currentTheme.text,
+                          border: isSys ? `1px dashed ${currentTheme.primary}` : isMe ? 'none' : `1px solid ${currentTheme.border}`,
+                          textAlign: isSys ? 'center' : 'left',
+                          borderRadiusStyle: isSys ? '8px' : isMe ? '10px 10px 0 10px' : '10px 10px 10px 0'
+                        }}>
+                          {m.content}
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+              <div ref={chatBottomRef} />
+            </div>
 
+            {/* Footer Input */}
+            <form onSubmit={(e) => handleSendMessage(e, popupNewMessageText, chatPopupContact, () => setPopupNewMessageText(''))} 
+              style={{ padding: '8px', borderTop: `1px solid ${currentTheme.border}`, display: 'flex', gap: '6px', backgroundColor: currentTheme.panel }}>
+              <input
+                type="text"
+                placeholder="Nhập tin nhắn rủ ăn..."
+                value={popupNewMessageText}
+                onChange={e => setPopupNewMessageText(e.target.value)}
+                style={{ 
+                  flex: 1, padding: '8px 10px', backgroundColor: currentTheme.bg, 
+                  border: `1px solid ${currentTheme.border}`, borderRadius: '8px', 
+                  color: currentTheme.text, fontSize: '12px', outline: 'none' 
+                }}
+              />
+              <button type="submit" style={{ padding: '8px 12px', backgroundColor: currentTheme.primary, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                Gửi
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Floating Bubble Icon */}
+        <button
+          onClick={() => {
+            if (!isLoggedIn) return navigate('/login');
+            if (!chatPopupContact) {
+              setChatPopupContact(onlineFriends[0]);
+            }
+            setIsChatPopupOpen(!isChatPopupOpen);
+          }}
+          style={{
+            width: '56px', height: '56px', borderRadius: '50%',
+            background: currentTheme.primaryGradient,
+            color: 'white', border: 'none', fontSize: '24px', cursor: 'pointer',
+            boxShadow: `0 8px 25px ${currentTheme.primaryGradientGlow}`, zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'transform 0.2s'
+          }}
+          onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
+          onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+          title="Mở Chat Rủ Ăn Chung"
+        >
+          💬
+        </button>
+      </div>
+
+      {/* ==============================================
+          SPLIT BILL & CHECKOUT MODAL FOR GROUP ORDER
+          ============================================== */}
+      {showSplitBillModal && (() => {
+        const bill = getSplitBillDetails();
+        return (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+            backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center',
+            alignItems: 'center', zIndex: 10005, backdropFilter: 'blur(4px)'
+          }}>
+            <div style={{
+              backgroundColor: currentTheme.panel, border: `1.5px solid ${currentTheme.border}`,
+              padding: '24px', borderRadius: '16px', maxWidth: '480px', width: '90%',
+              boxShadow: `0 15px 40px ${currentTheme.shadow}`, color: currentTheme.text
+            }}>
+              <h3 style={{ color: currentTheme.primary, fontSize: '20px', margin: '0 0 16px 0', fontWeight: '800', textAlign: 'center' }}>
+                📊 BẢNG CHIA TIỀN HÓA ĐƠN NHÓM
+              </h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                {bill.splitList.map(member => (
+                  <div key={member.id} style={{ 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                    padding: '10px 14px', backgroundColor: currentTheme.bg, borderRadius: '10px',
+                    border: `1px solid ${currentTheme.border}`
+                  }}>
+                    <span style={{ fontWeight: '700', fontSize: '13px' }}>{member.name}</span>
+                    <div style={{ textAlign: 'right', fontSize: '12px' }}>
+                      <div>Món ăn: <span style={{ fontWeight: 'bold' }}>{member.itemsTotal.toLocaleString()}đ</span></div>
+                      <div style={{ color: currentTheme.textMuted }}>Ship chia: <span style={{ fontWeight: 'bold' }}>{member.shipShare.toLocaleString()}đ</span></div>
+                      <div style={{ color: currentTheme.primary, fontWeight: '800', fontSize: '13px', marginTop: '2px' }}>Cộng: {member.total.toLocaleString()}đ</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total bills summary */}
+              <div style={{ 
+                borderTop: `1.5px solid ${currentTheme.border}`, paddingTop: '12px', marginBottom: '24px',
+                fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '4px' 
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Thành tiền các món:</span>
+                  <span>{bill.subtotal.toLocaleString()}đ</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Phí ship chia đều:</span>
+                  <span>{bill.shippingFee.toLocaleString()}đ</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '900', color: currentTheme.primary, marginTop: '6px' }}>
+                  <span>Tổng tiền thanh toán cả nhóm:</span>
+                  <span>{bill.totalPrice.toLocaleString()}đ</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button 
+                  onClick={() => setShowSplitBillModal(false)}
+                  style={{ flex: 1, padding: '12px 0', backgroundColor: currentTheme.bg, color: currentTheme.text, border: `1.5px solid ${currentTheme.border}`, borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  Quay lại
+                </button>
+                <button 
+                  onClick={handleGroupCheckoutSubmit}
+                  style={{ flex: 1, padding: '12px 0', background: currentTheme.primaryGradient, color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', boxShadow: `0 4px 15px ${currentTheme.primaryGradientGlow}` }}
+                >
+                  Đặt đơn nhóm 🚀
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* GENERAL MODAL */}
       {showModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
           backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center',
-          alignItems: 'center', zIndex: 9999
+          alignItems: 'center', zIndex: 99999
         }}>
           <div style={{
-            backgroundColor: '#111827', padding: '30px', borderRadius: '12px',
-            boxShadow: '0 4px 25px rgba(0,0,0,0.5)', textAlign: 'center',
-            maxWidth: '400px', width: '90%', border: '1px solid #1f2937'
+            backgroundColor: currentTheme.panel, padding: '30px', borderRadius: '16px',
+            boxShadow: `0 10px 30px ${currentTheme.shadow}`, textAlign: 'center',
+            maxWidth: '400px', width: '90%', border: `1.5px solid ${currentTheme.primary}`
           }}>
-            <div style={{ fontSize: '45px', marginBottom: '10px' }}>⚙️</div>
-            <h3 style={{ margin: '0 0 10px', color: '#10b981', fontWeight: '700' }}>Thông Báo Hệ Thống</h3>
-            <p style={{ color: '#94a3b8', fontSize: '15px', lineHeight: '1.5', margin: '0 0 20px' }}>
-              Tính năng đang liên kết cổng dữ liệu API mã hóa, vui lòng quay lại sau!
+            <div style={{ fontSize: '45px', marginBottom: '10px' }}>🚀</div>
+            <h3 style={{ margin: '0 0 10px', color: currentTheme.primary, fontWeight: '800' }}>Đặt Đơn Thành Công!</h3>
+            <p style={{ color: currentTheme.textMuted, fontSize: '14px', lineHeight: '1.5', margin: '0 0 20px' }}>
+              Đơn hàng của bạn đã được ghi nhận. Hệ thống đang tiến hành điều phối cửa hàng chuẩn bị món ăn!
             </p>
             <button
               onClick={() => setShowModal(false)}
               style={{
-                padding: '10px 40px', backgroundColor: '#10b981', color: 'white',
-                border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px'
+                padding: '10px 40px', backgroundColor: currentTheme.primary, color: 'white',
+                border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px'
               }}
             >Xác nhận</button>
           </div>
         </div>
       )}
 
-      <footer style={{ textAlign: 'center', padding: '40px 0', color: '#64748b', fontSize: '14px', maxWidth: '1200px', margin: '0 auto' }}>
+      <footer style={{ textAlign: 'center', padding: '40px 0', color: currentTheme.textMuted, fontSize: '13px', maxWidth: '1200px', margin: '0 auto' }}>
         © 2026 TasteByte - Đồ án Công nghệ phần mềm Nhóm 8
       </footer>
+
+      {/* Embedded Animations CSS */}
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(120%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { transform: translateY(50px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
