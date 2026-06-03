@@ -452,7 +452,7 @@ const Profile = () => {
                         const cfg = statusConfig[order.status] || statusConfig.pending;
                         const shortId = order._id?.slice(-12).toUpperCase();
                         const date = new Date(order.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                        const storeName = order.store_id?.store_name || 'TasteByte Store';
+                        const storeName = order.store_id?.display_name || order.store_id?.store_name || 'TasteByte Store';
                         const firstItem = order.items?.[0];
                         const extraCount = (order.items?.length || 1) - 1;
 
@@ -681,7 +681,7 @@ const Profile = () => {
               <div style={{ backgroundColor: '#0b0f19', borderRadius: '8px', padding: '16px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#94a3b8' }}>Cửa hàng</span>
-                  <span style={{ color: '#ffffff', fontWeight: '600' }}>{selectedOrder.store_id?.store_name || 'TasteByte Store'}</span>
+                  <span style={{ color: '#ffffff', fontWeight: '600' }}>{selectedOrder.store_id?.display_name || selectedOrder.store_id?.store_name || 'TasteByte Store'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#94a3b8' }}>Ngày đặt</span>

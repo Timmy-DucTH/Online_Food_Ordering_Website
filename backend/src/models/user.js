@@ -55,6 +55,14 @@ const UserSchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'banned'],
     default: 'active' // Mặc định tài khoản mới tạo sẽ hoạt động bình thường
+  },
+  banned_until: {
+    type: Date,
+    default: null
+  },
+  ban_reason: {
+    type: String,
+    default: ''
   }
 }, {
   // Tự động tạo thêm 2 trường: 'createdAt' (Ngày tạo) và 'updatedAt' (Ngày cập nhật mới nhất)

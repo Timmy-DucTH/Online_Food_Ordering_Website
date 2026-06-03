@@ -28,6 +28,26 @@ const AdminDashboard = () => {
   const [confirmMsg, setConfirmMsg] = useState('');
   const [confirmCallback, setConfirmCallback] = useState(null);
 
+  // ==========================================
+  // STATE CHO CÁC MODAL NHẬP LÝ DO XÓA/KHÓA TÀI KHOẢN
+  // ==========================================
+  const [showDeleteFoodReasonModal, setShowDeleteFoodReasonModal] = useState(false);
+  const [deleteFoodReason, setDeleteFoodReason] = useState('');
+  const [selectedFoodIdForDelete, setSelectedFoodIdForDelete] = useState('');
+
+  const [showBanUserReasonModal, setShowBanUserReasonModal] = useState(false);
+  const [banUserReason, setBanUserReason] = useState('');
+  const [selectedUserIdForBan, setSelectedUserIdForBan] = useState('');
+  const [banUserDuration, setBanUserDuration] = useState('permanent');
+
+  // ==========================================
+  // STATE CHO MỤC HỖ TRỢ TRỰC TUYẾN
+  // ==========================================
+  const [supportContacts, setSupportContacts] = useState([]);
+  const [selectedSupportContact, setSelectedSupportContact] = useState(null);
+  const [supportMessages, setSupportMessages] = useState([]);
+  const [supportNewMessageText, setSupportNewMessageText] = useState('');
+
   const showAdminError = (msg) => {
     setErrModalMsg(msg);
     setShowErrModal(true);
@@ -183,6 +203,10 @@ const AdminDashboard = () => {
           const res = await API.get('/admin/restaurants'); // API Lấy danh sách cửa hàng
           setRestaurants(res.data.data || []);
         }
+        if (activeTab === 'support') {
+          const res = await API.get('/messages/users');
+          setSupportContacts(res.data.data || []);
+        }
       } catch (err) {
         setErrorMsg(err.response?.data?.message || 'Không thể đồng bộ dữ liệu với máy chủ backend!');
       } finally {
@@ -203,19 +227,111 @@ const AdminDashboard = () => {
     }
   }, [successMsg]);
 
+  // =========================================================================
+  // EFFECT 3: TỰ ĐỘNG ĐỒNG BỘ TIN NHẮN HỖ TRỢ MỖI 4 GIÂY (POLLING)
+  // =========================================================================
+  useEffect(() => {
+    if (activeTab !== 'support') return;
+    
+    const interval = setInterval(() => {
+      // Tải lại danh sách người nhắn hỗ trợ
+      API.get('/messages/users').then(res => {
+        setSupportContacts(res.data.data || []);
+      }).catch(err => console.error(err));
+      
+      // Tải lại tin nhắn của người đang được chọn
+      if (selectedSupportContact) {
+        API.get(`/messages/${selectedSupportContact._id}`).then(res => {
+          if (res.data.status === 'success') {
+            setSupportMessages(res.data.data || []);
+          }
+        }).catch(err => console.error(err));
+      }
+    }, 4000);
+    
+    return () => clearInterval(interval);
+  }, [activeTab, selectedSupportContact]);
+
+  // =========================================================================
+  // EFFECT 4: TỰ ĐỘNG ĐỒNG BỘ DỮ LIỆU ĐỂ HIỂN THỊ BADGE THÔNG BÁO (MỖI 5 GIÂY)
+  // =========================================================================
+  useEffect(() => {
+    const fetchBadgeData = async () => {
+      try {
+        const resRestaurants = await API.get('/admin/restaurants');
+        setRestaurants(resRestaurants.data.data || []);
+      } catch (err) {
+        console.error('Lỗi lấy danh sách cửa hàng cho badge:', err);
+      }
+
+      try {
+        const resFoods = await API.get('/admin/foods');
+        setFoods(resFoods.data.foods || []);
+      } catch (err) {
+        console.error('Lỗi lấy danh sách món ăn cho badge:', err);
+      }
+
+      try {
+        const resSupport = await API.get('/messages/users');
+        setSupportContacts(resSupport.data.data || []);
+      } catch (err) {
+        console.error('Lỗi lấy danh sách tin nhắn hỗ trợ cho badge:', err);
+      }
+    };
+
+    // Chạy ngay khi mount
+    fetchBadgeData();
+
+    const interval = setInterval(fetchBadgeData, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   // ==========================================
   // HÀM NGHIỆP VỤ 1: QUẢN LÝ NGƯỜI DÙNG
   // ==========================================
   const handleToggleBlockUser = async (userId, currentStatus) => {
+    if (currentStatus === 'banned') {
+      try {
+        const res = await API.put(`/admin/users/${userId}/unban`);
+        if (res.data.status === 'success') {
+          setSuccessMsg(res.data.message || 'Đã mở khóa tài khoản thành công!');
+          setUsers(users.map(u => u._id === userId ? { ...u, status: 'active', banned_until: null, ban_reason: '' } : u));
+        }
+      } catch (err) {
+        showAdminError(err.response?.data?.message || 'Lỗi thao tác phân quyền tài khoản!');
+      }
+    } else {
+      setSelectedUserIdForBan(userId);
+      setBanUserReason('');
+      setBanUserDuration('permanent');
+      setShowBanUserReasonModal(true);
+    }
+  };
+
+  const confirmBanUser = async () => {
+    if (!banUserReason.trim()) {
+      showAdminError('Vui lòng nhập lý do khóa tài khoản!');
+      return;
+    }
     try {
-      const endpoint = currentStatus === 'banned' ? `/admin/users/${userId}/unban` : `/admin/users/${userId}/ban`;
-      const res = await API.put(endpoint);
+      const res = await API.put(`/admin/users/${selectedUserIdForBan}/ban`, {
+        reason: banUserReason,
+        duration: banUserDuration
+      });
       if (res.data.status === 'success') {
-        setSuccessMsg(res.data.message || 'Cập nhật trạng thái người dùng thành công!');
-        setUsers(users.map(u => u._id === userId ? { ...u, status: currentStatus === 'banned' ? 'active' : 'banned' } : u));
+        setSuccessMsg(res.data.message || '🔒 Đã khóa tài khoản và gửi lý do cho người dùng!');
+        
+        let banned_until = null;
+        if (banUserDuration !== 'permanent') {
+          const days = parseInt(banUserDuration, 10);
+          banned_until = new Date();
+          banned_until.setDate(banned_until.getDate() + days);
+        }
+        setUsers(users.map(u => u._id === selectedUserIdForBan ? { ...u, status: 'banned', banned_until, ban_reason: banUserReason } : u));
+        setShowBanUserReasonModal(false);
       }
     } catch (err) {
-      showAdminError(err.response?.data?.message || 'Lỗi thao tác phân quyền tài khoản!');
+      showAdminError(err.response?.data?.message || 'Thao tác khóa tài khoản thất bại!');
     }
   };
 
@@ -235,20 +351,28 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteFood = (foodId) => {
-    showAdminConfirm(
-      'Bạn có chắc chắn muốn gỡ món ăn này khỏi thực đơn cửa hàng không? Hành động này không thể hoàn tác.',
-      async () => {
-        try {
-          const res = await API.delete(`/admin/foods/${foodId}`);
-          if (res.data.status === 'success') {
-            setSuccessMsg('🗑️ Đã xóa món ăn thành công!');
-            setFoods(prev => prev.filter(f => f._id !== foodId));
-          }
-        } catch (err) {
-          showAdminError(err.response?.data?.message || 'Xóa món ăn thất bại!');
-        }
+    setSelectedFoodIdForDelete(foodId);
+    setDeleteFoodReason('');
+    setShowDeleteFoodReasonModal(true);
+  };
+
+  const confirmDeleteFood = async () => {
+    if (!deleteFoodReason.trim()) {
+      showAdminError('Vui lòng nhập lý do xóa món ăn!');
+      return;
+    }
+    try {
+      const res = await API.delete(`/admin/foods/${selectedFoodIdForDelete}`, {
+        data: { reason: deleteFoodReason }
+      });
+      if (res.data.status === 'success') {
+        setSuccessMsg('🗑️ Đã xóa món ăn và gửi thông báo tới cửa hàng!');
+        setFoods(prev => prev.filter(f => f._id !== selectedFoodIdForDelete));
+        setShowDeleteFoodReasonModal(false);
       }
-    );
+    } catch (err) {
+      showAdminError(err.response?.data?.message || 'Xóa món ăn thất bại!');
+    }
   };
 
   // ==========================================
@@ -291,12 +415,48 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
+  const fetchSupportMessages = async (userId) => {
+    try {
+      const res = await API.get(`/messages/${userId}`);
+      if (res.data.status === 'success') {
+        setSupportMessages(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching support messages:', err);
+    }
+  };
+
+  const handleSendSupportMessage = async (e) => {
+    e.preventDefault();
+    if (!supportNewMessageText.trim() || !selectedSupportContact) return;
+    
+    const text = supportNewMessageText.trim();
+    setSupportNewMessageText('');
+    
+    try {
+      const res = await API.post('/messages', {
+        receiver_id: selectedSupportContact._id,
+        content: text
+      });
+      if (res.data.status === 'success') {
+        setSupportMessages(prev => [...prev, res.data.data]);
+      }
+    } catch (err) {
+      showAdminError('Gửi tin nhắn phản hồi thất bại!');
+    }
+  };
+
   // ==========================================
   // LOGIC ĐẾM THỐNG KÊ TỰ ĐỘNG THEO DỮ LIỆU THẬT
   // ==========================================
   const totalUsersCount = users.length;
   const bannedUsersCount = users.filter(u => u.status === 'banned').length;
   const activeOrdersCount = orders.filter(o => o.status === 'completed').length;
+
+  // Đếm số lượng thông báo / hành vi chờ xử lý cho badge ở sidebar
+  const pendingRestaurantsCount = restaurants.filter(r => r.status === 'pending').length;
+  const pendingFoodsCount = foods.filter(f => f.status === 'pending').length;
+  const pendingSupportCount = supportContacts.filter(c => c.needsReply).length;
 
   // Kiểu dáng Table mẫu dùng chung (Dark Theme)
   const tableThStyle = { padding: '12px 15px', borderBottom: '2px solid #1f2937', color: '#94a3b8', fontSize: '14px', fontWeight: '600' };
@@ -323,18 +483,82 @@ const AdminDashboard = () => {
             <button onClick={() => setActiveTab('overview')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'overview' ? '#10b981' : 'transparent', color: activeTab === 'overview' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
               📊 Tổng Quan Hệ Thống
             </button>
-            <button onClick={() => setActiveTab('restaurants')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'restaurants' ? '#10b981' : 'transparent', color: activeTab === 'restaurants' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
+            <button onClick={() => setActiveTab('restaurants')} style={{ position: 'relative', width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'restaurants' ? '#10b981' : 'transparent', color: activeTab === 'restaurants' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
               🏪 Xét Duyệt Cửa Hàng
+              {pendingRestaurantsCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-5px',
+                  left: '-5px',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  borderRadius: '50%',
+                  width: '20px',
+                  height: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                  border: '1.5px solid #111827'
+                }}>
+                  {pendingRestaurantsCount}
+                </span>
+              )}
             </button>
             <button onClick={() => setActiveTab('users')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'users' ? '#10b981' : 'transparent', color: activeTab === 'users' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
               👥 Quản Lý Người Dùng
             </button>
-            <button onClick={() => setActiveTab('foods')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'foods' ? '#10b981' : 'transparent', color: activeTab === 'foods' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
+            <button onClick={() => setActiveTab('foods')} style={{ position: 'relative', width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'foods' ? '#10b981' : 'transparent', color: activeTab === 'foods' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
               🍔 Quản Lý Món Ăn
+              {pendingFoodsCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-5px',
+                  left: '-5px',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  borderRadius: '50%',
+                  width: '20px',
+                  height: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                  border: '1.5px solid #111827'
+                }}>
+                  {pendingFoodsCount}
+                </span>
+              )}
             </button>
-            <button onClick={() => setActiveTab('orders')} style={{ width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'orders' ? '#10b981' : 'transparent', color: activeTab === 'orders' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
-              📦 Quản Lý Đơn Hàng
+            <button onClick={() => setActiveTab('support')} style={{ position: 'relative', width: '100%', padding: '12px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', textAlign: 'left', backgroundColor: activeTab === 'support' ? '#10b981' : 'transparent', color: activeTab === 'support' ? 'white' : '#94a3b8', transition: 'all 0.2s' }}>
+              💬 Hỗ Trợ Trực Tuyến
+              {pendingSupportCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-5px',
+                  left: '-5px',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  borderRadius: '50%',
+                  width: '20px',
+                  height: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+                  border: '1.5px solid #111827'
+                }}>
+                  {pendingSupportCount}
+                </span>
+              )}
             </button>
+            {/* Mục quản lý đơn hàng đã gỡ bỏ */}
           </div>
         </div>
 
@@ -736,19 +960,38 @@ const AdminDashboard = () => {
                           <span style={{ fontWeight: 'bold', color: user.credit_score < 50 ? '#e11d48' : '#10b981', backgroundColor: user.credit_score < 50 ? 'rgba(225, 29, 72, 0.1)' : 'rgba(16, 185, 129, 0.1)', padding: '4px 10px', borderRadius: '6px' }}>
                             {user.credit_score ?? 100} điểm
                           </span>
+                          {user.credit_score < 30 && (
+                            <div style={{ color: '#f59e0b', fontSize: '11px', marginTop: '6px', fontWeight: '600' }}>
+                              ⚠️ Đã thông báo cảnh báo
+                            </div>
+                          )}
                         </td>
                         <td style={tableTdStyle}>
                           <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '12px', fontWeight: 'bold', backgroundColor: user.status === 'banned' ? 'rgba(225, 29, 72, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: user.status === 'banned' ? '#e11d48' : '#10b981' }}>
                             {user.status === 'banned' ? 'Đã Khóa 🚫' : 'Hoạt Động 🟢'}
                           </span>
+                          {user.status === 'banned' && user.banned_until && (
+                            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', fontWeight: '500' }}>
+                              Mở khóa: {new Date(user.banned_until).toLocaleDateString('vi-VN')}
+                            </div>
+                          )}
+                          {user.status === 'banned' && !user.banned_until && (
+                            <div style={{ fontSize: '11px', color: '#e11d48', marginTop: '6px', fontWeight: '500' }}>
+                              Khóa vĩnh viễn
+                            </div>
+                          )}
                         </td>
                         <td style={tableTdStyle}>
-                          <button 
-                            onClick={() => handleToggleBlockUser(user._id, user.status)}
-                            style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: user.status === 'banned' ? '#10b981' : 'rgba(225, 29, 72, 0.15)', color: user.status === 'banned' ? 'white' : '#e11d48', transition: 'all 0.2s' }}
-                          >
-                            {user.status === 'banned' ? '🔓 Mở Khóa' : '🔒 Khóa Tài Khoản'}
-                          </button>
+                          {user.role === 'admin' ? (
+                            <span style={{ color: '#94a3b8', fontSize: '13px', fontStyle: 'italic' }}>Quyền Admin bảo vệ</span>
+                          ) : (
+                            <button 
+                              onClick={() => handleToggleBlockUser(user._id, user.status)}
+                              style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: user.status === 'banned' ? '#10b981' : 'rgba(225, 29, 72, 0.15)', color: user.status === 'banned' ? 'white' : '#e11d48', transition: 'all 0.2s' }}
+                            >
+                              {user.status === 'banned' ? '🔓 Mở Khóa' : '🔒 Khóa Tài Khoản'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -823,59 +1066,132 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* ================= TAB 5: QUẢN LÝ ĐƠN HÀNG & DUYỆT TRẠNG THÁI ================= */}
-        {activeTab === 'orders' && (
-          <div style={{ backgroundColor: '#111827', padding: '25px', borderRadius: '12px', border: '1px solid #1f2937' }}>
-            <h3 style={{ margin: '0 0 6px 0', color: '#ffffff', fontWeight: '600' }}>📦 Quản lý dòng vận đơn giao hàng</h3>
-            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>Kiểm duyệt trạng thái luồng vận chuyển thức ăn. Nếu khách hàng cố tình bùng đơn, chuyển sang trạng thái Canceled để kích hoạt trừ điểm uy tín.</p>
-            
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#0b0f19' }}>
-                    <th style={tableThStyle}>Mã Đơn</th>
-                    <th style={tableThStyle}>Khách Hàng (Email)</th>
-                    <th style={tableThStyle}>Tổng Tiền</th>
-                    <th style={tableThStyle}>Địa Chỉ Giao Nhận</th>
-                    <th style={tableThStyle}>Trạng Thái</th>
-                    <th style={tableThStyle}>Cập Nhật Vận Đơn</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.length === 0 ? (
-                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', borderBottom: '1px solid #1f2937' }}>Hệ thống chưa phát sinh bất kỳ đơn đặt hàng nào.</td></tr>
-                  ) : (
-                    orders.map((order) => (
-                      <tr key={order._id}>
-                        <td style={tableTdStyle}><code style={{ color: '#ffffff', fontWeight: 'bold' }}>#{order._id?.substring(18)}</code></td>
-                        <td style={tableTdStyle}>{order.user_id?.email || 'Ẩn danh'}</td>
-                        <td style={tableTdStyle}><span style={{ color: '#10b981', fontWeight: '700' }}>{order.total_price?.toLocaleString('vi-VN')}đ</span></td>
-                        <td style={tableTdStyle}><span style={{ fontSize: '13px', color: '#94a3b8' }}>{order.address || 'Tại quầy cửa hàng'}</span></td>
-                        <td style={tableTdStyle}>
-                          <span style={{ 
-                            padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold',
-                            backgroundColor: order.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : order.status === 'pending' ? 'rgba(217, 119, 6, 0.1)' : 'rgba(225, 29, 72, 0.1)',
-                            color: order.status === 'completed' ? '#10b981' : order.status === 'pending' ? '#f59e0b' : '#e11d48'
-                          }}>
-                            {order.status === 'pending' ? '⌛ Chờ duyệt' : order.status === 'completed' ? '✓ Thành công' : '✕ Đã hủy'}
-                          </span>
-                        </td>
-                        <td style={tableTdStyle}>
-                          <select 
-                            value={order.status} 
-                            onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
-                            style={{ padding: '6px', borderRadius: '6px', border: '1px solid #1f2937', fontSize: '13px', backgroundColor: '#0b0f19', color: '#ffffff', cursor: 'pointer', outline: 'none' }}
+        {/* ================= TAB 5: QUẢN LÝ ĐƠN HÀNG (ĐÃ GỠ BỎ) ================= */}
+
+        {/* ================= TAB 6: HỖ TRỢ TRỰC TUYẾN ================= */}
+        {activeTab === 'support' && (
+          <div style={{ display: 'flex', gap: '20px', height: 'calc(100vh - 150px)', animation: 'adminFadeIn 0.3s ease-out' }}>
+            {/* LEFT PANE - CONTACTS LIST */}
+            <div style={{ width: '280px', backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <h4 style={{ margin: '0 0 10px 0', color: '#ffffff', fontWeight: 'bold', fontSize: '16px' }}>💬 Yêu cầu hỗ trợ</h4>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {supportContacts.length === 0 ? (
+                  <div style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', marginTop: '20px' }}>Chưa có tin nhắn hỗ trợ nào gửi tới hệ thống.</div>
+                ) : (
+                  supportContacts.map(contact => {
+                    const isSelected = selectedSupportContact?._id === contact._id;
+                    return (
+                      <div
+                        key={contact._id}
+                        onClick={() => {
+                          setSelectedSupportContact(contact);
+                          setSupportMessages([]);
+                          fetchSupportMessages(contact._id);
+                        }}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.15)' : '#0b0f19',
+                          border: isSelected ? '1px solid #10b981' : '1px solid #1f2937',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#ffffff' }}>{contact.full_name}</div>
+                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px', wordBreak: 'break-all' }}>{contact.email}</div>
+                        <span style={{ display: 'inline-block', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', marginTop: '6px', fontWeight: 'bold', backgroundColor: contact.role === 'merchant' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: contact.role === 'merchant' ? '#10b981' : '#3b82f6' }}>
+                          {contact.role === 'merchant' ? 'Cửa hàng' : 'Khách hàng'}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT PANE - CHAT AREA */}
+            <div style={{ flex: 1, backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', display: 'flex', flexDirection: 'column' }}>
+              {selectedSupportContact ? (
+                <>
+                  {/* Chat header */}
+                  <div style={{ padding: '15px 20px', borderBottom: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h4 style={{ margin: 0, color: '#ffffff', fontWeight: 'bold', fontSize: '16px' }}>{selectedSupportContact.full_name}</h4>
+                      <p style={{ margin: '2px 0 0 0', color: '#94a3b8', fontSize: '12px' }}>{selectedSupportContact.email}</p>
+                    </div>
+                    <span style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                      Đang kết nối hỗ trợ
+                    </span>
+                  </div>
+
+                  {/* Chat messages */}
+                  <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {supportMessages.length === 0 ? (
+                      <div style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', marginTop: '20px' }}>Đang tải lịch sử cuộc trò chuyện...</div>
+                    ) : (
+                      supportMessages.map(msg => {
+                        const isAdminMsg = msg.sender_id === selectedSupportContact._id ? false : true;
+                        return (
+                          <div
+                            key={msg._id}
+                            style={{
+                              display: 'flex',
+                              justifyContent: isAdminMsg ? 'flex-end' : 'flex-start',
+                              width: '100%'
+                            }}
                           >
-                            <option value="pending" style={{ backgroundColor: '#0b0f19' }}>⌛ Chờ xử lý</option>
-                            <option value="completed" style={{ backgroundColor: '#0b0f19' }}>✓ Đã giao hàng</option>
-                            <option value="cancelled" style={{ backgroundColor: '#0b0f19' }}>❌ Hủy / Bùng hàng (Trừ uy tín)</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                            <div
+                              style={{
+                                maxWidth: '70%',
+                                padding: '10px 14px',
+                                borderRadius: '12px',
+                                borderTopRightRadius: isAdminMsg ? '2px' : '12px',
+                                borderTopLeftRadius: isAdminMsg ? '12px' : '2px',
+                                backgroundColor: isAdminMsg ? '#10b981' : '#1f2937',
+                                color: '#ffffff',
+                                fontSize: '14px',
+                                wordBreak: 'break-word',
+                                textAlign: 'left',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                              }}
+                            >
+                              <div style={{ lineHeight: '1.4' }}>{msg.content}</div>
+                              <div style={{ fontSize: '10px', color: isAdminMsg ? 'rgba(255,255,255,0.7)' : '#94a3b8', marginTop: '4px', textAlign: 'right' }}>
+                                {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Message Input */}
+                  <form onSubmit={handleSendSupportMessage} style={{ padding: '15px 20px', borderTop: '1px solid #1f2937', display: 'flex', gap: '10px' }}>
+                    <input
+                      type="text"
+                      value={supportNewMessageText}
+                      onChange={(e) => setSupportNewMessageText(e.target.value)}
+                      placeholder="Nhập nội dung phản hồi khách hàng..."
+                      style={{ flex: 1, padding: '12px 16px', backgroundColor: '#0b0f19', color: '#ffffff', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                    />
+                    <button
+                      type="submit"
+                      style={{ padding: '12px 24px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' }}
+                      onMouseOver={(e) => e.target.style.opacity = '0.85'}
+                      onMouseOut={(e) => e.target.style.opacity = '1'}
+                    >
+                      Gửi ✉
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#94a3b8', padding: '40px', gap: '10px' }}>
+                  <span style={{ fontSize: '48px' }}>✉</span>
+                  <div style={{ fontSize: '15px', fontWeight: '500' }}>Chọn một khách hàng cần hỗ trợ để bắt đầu trò chuyện</div>
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>Hệ thống tự động đồng bộ hóa các câu hỏi & yêu cầu của người dùng gửi tới kênh 🛡️ Hệ thống TasteByte.</div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -928,6 +1244,103 @@ const AdminDashboard = () => {
                 onMouseOut={(e) => e.target.style.opacity = '1'}
               >
                 Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 💬 MODAL NHẬP LÝ DO XÓA MÓN ĂN */}
+      {showDeleteFoodReasonModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.88)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#111827', width: '460px', padding: '32px', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.25)', textAlign: 'left', boxShadow: '0 25px 50px rgba(0,0,0,0.7)', boxSizing: 'border-box', animation: 'adminFadeIn 0.3s ease-out' }}>
+            <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#ef4444', fontWeight: '800' }}>Lý Do Xóa Món Ăn</h4>
+            <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.5', margin: '0 0 16px 0' }}>
+              Nhập lý do gỡ bỏ món ăn này. Lý do sẽ được gửi trực tiếp đến hộp thư thông báo của chủ cửa hàng.
+            </p>
+            <textarea
+              value={deleteFoodReason}
+              onChange={(e) => setDeleteFoodReason(e.target.value)}
+              placeholder="Ví dụ: Món ăn không đảm bảo an toàn vệ sinh hoặc hình ảnh không phù hợp..."
+              rows={4}
+              style={{ width: '100%', padding: '12px', backgroundColor: '#0b0f19', color: '#ffffff', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '14px', outline: 'none', resize: 'none', boxSizing: 'border-box', marginBottom: '24px' }}
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowDeleteFoodReasonModal(false)}
+                style={{ padding: '10px 20px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #374151', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseOver={(e) => { e.target.style.borderColor = '#94a3b8'; e.target.style.color = '#fff'; }}
+                onMouseOut={(e) => { e.target.style.borderColor = '#374151'; e.target.style.color = '#94a3b8'; }}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmDeleteFood}
+                style={{ padding: '10px 20px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' }}
+                onMouseOver={(e) => e.target.style.opacity = '0.85'}
+                onMouseOut={(e) => e.target.style.opacity = '1'}
+              >
+                Xác nhận gỡ món
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔒 MODAL NHẬP LÝ DO KHÓA TÀI KHOẢN */}
+      {showBanUserReasonModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(3, 7, 18, 0.88)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999999, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#111827', width: '460px', padding: '32px', borderRadius: '16px', border: '1px solid rgba(225, 29, 72, 0.25)', textAlign: 'left', boxShadow: '0 25px 50px rgba(0,0,0,0.7)', boxSizing: 'border-box', animation: 'adminFadeIn 0.3s ease-out' }}>
+            <h4 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#e11d48', fontWeight: '800' }}>Khóa Tài Khoản Thành Viên</h4>
+            <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.5', margin: '0 0 16px 0' }}>
+              Nhập lý do và chọn thời hạn khóa tài khoản. Lý do sẽ được lưu vào hệ thống và gửi thông báo trực tiếp đến người dùng.
+            </p>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', color: '#94a3b8', fontSize: '13px', fontWeight: 'bold', marginBottom: '8px' }}>
+                Thời hạn khóa:
+              </label>
+              <select
+                value={banUserDuration}
+                onChange={(e) => setBanUserDuration(e.target.value)}
+                style={{ width: '100%', padding: '10px', backgroundColor: '#0b0f19', color: '#ffffff', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '14px', outline: 'none', cursor: 'pointer', boxSizing: 'border-box' }}
+              >
+                <option value="3">⌛ Khóa 3 ngày</option>
+                <option value="7">⌛ Khóa 7 ngày</option>
+                <option value="30">⌛ Khóa 30 ngày</option>
+                <option value="permanent">🔒 Khóa vĩnh viễn</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', color: '#94a3b8', fontSize: '13px', fontWeight: 'bold', marginBottom: '8px' }}>
+                Lý do khóa:
+              </label>
+              <textarea
+                value={banUserReason}
+                onChange={(e) => setBanUserReason(e.target.value)}
+                placeholder="Ví dụ: Bùng đơn hàng nhiều lần, có hành vi gian lận điểm tín nhiệm..."
+                rows={3}
+                style={{ width: '100%', padding: '12px', backgroundColor: '#0b0f19', color: '#ffffff', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '14px', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowBanUserReasonModal(false)}
+                style={{ padding: '10px 20px', backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #374151', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseOver={(e) => { e.target.style.borderColor = '#94a3b8'; e.target.style.color = '#fff'; }}
+                onMouseOut={(e) => { e.target.style.borderColor = '#374151'; e.target.style.color = '#94a3b8'; }}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmBanUser}
+                style={{ padding: '10px 20px', backgroundColor: '#e11d48', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'opacity 0.2s' }}
+                onMouseOver={(e) => e.target.style.opacity = '0.85'}
+                onMouseOut={(e) => e.target.style.opacity = '1'}
+              >
+                Xác nhận khóa
               </button>
             </div>
           </div>

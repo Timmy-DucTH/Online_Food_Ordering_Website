@@ -3,16 +3,9 @@ import { useState } from 'react';
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=500';
 
 const StarRating = ({ rating }) => {
-  const fullStars = Math.floor(rating);
-  const hasHalf = rating - fullStars >= 0.5;
   return (
-    <span style={{ color: '#fbbf24', fontSize: '13px', letterSpacing: '1px' }}>
-      {Array.from({ length: 5 }, (_, i) => {
-        if (i < fullStars) return '★';
-        if (i === fullStars && hasHalf) return '½';
-        return '☆';
-      }).join('')}
-      <span style={{ color: '#94a3b8', marginLeft: '4px', fontSize: '12px' }}>{rating.toFixed(1)}</span>
+    <span style={{ color: '#fbbf24', fontSize: '13px', fontWeight: 'bold' }}>
+      {rating.toFixed(1)}★
     </span>
   );
 };
@@ -74,8 +67,6 @@ const FoodDetailModal = ({ food, onClose, addToCart, handleBuyNow }) => {
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
             <StarRating rating={food.rating || 4.5} />
-            <span style={{ fontSize: '12px', color: '#64748b' }}>•</span>
-            <span style={{ fontSize: '13px', color: '#64748b' }}>ID: {String(food._id).slice(-6).toUpperCase()}</span>
           </div>
 
           {/* Description */}
@@ -95,7 +86,7 @@ const FoodDetailModal = ({ food, onClose, addToCart, handleBuyNow }) => {
                 🏪 Thông tin cửa hàng
               </div>
               <div style={{ color: '#10b981', fontWeight: '700', fontSize: '15px', marginBottom: '4px' }}>
-                {restaurant.store_name || food.restaurant_name}
+                {restaurant.display_name || restaurant.store_name || food.restaurant_name}
               </div>
               {restaurant.address && (
                 <div style={{ color: '#94a3b8', fontSize: '13px', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
@@ -227,12 +218,11 @@ const FoodCard = ({ item, addToCart, handleBuyNow }) => {
             {item.name}
           </h4>
 
-          {/* Restaurant name */}
-          {(item.restaurant_id?.store_name || item.restaurant_name) && (
+          {(item.restaurant_id?.display_name || item.restaurant_id?.store_name || item.restaurant_name) && (
             <div style={{ color: '#10b981', fontSize: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span>🏪</span>
               <span style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                {item.restaurant_id?.store_name || item.restaurant_name}
+                {item.restaurant_id?.display_name || item.restaurant_id?.store_name || item.restaurant_name}
               </span>
             </div>
           )}

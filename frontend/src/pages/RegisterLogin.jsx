@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser, registerUser, forgotPasswordAPI } from '../services/api'; // Gọi api thật từ file cấu hình axios
 
+const EyeOpen = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '20px', height: '20px' }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+  </svg>
+);
+
+const EyeSlashed = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '20px', height: '20px' }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+  </svg>
+);
+
 const RegisterLogin = ({ setIsLoggedIn }) => {
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
@@ -9,11 +22,13 @@ const RegisterLogin = ({ setIsLoggedIn }) => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // ==========================================
   // STATE QUẢN LÝ MODAL THÔNG BÁO GIỮA MÀN HÌNH
@@ -33,6 +48,12 @@ const RegisterLogin = ({ setIsLoggedIn }) => {
     }
   }, [showModal, pendingRedirect]);
 
+  // Reset password visibility when switching forms
+  useEffect(() => {
+    setShowPassword(false);
+    setConfirmPassword('');
+  }, [isRegister, isForgotPassword]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -50,6 +71,10 @@ const RegisterLogin = ({ setIsLoggedIn }) => {
           setShowModal(true);
         }
       } else if (isRegister) {
+        if (password !== confirmPassword) {
+          setErrorMsg('Mật khẩu nhập lại không khớp!');
+          return;
+        }
         const res = await registerUser({ phone, full_name: fullName, email, password });
         if (res.data.status === 'success') {
           // Kích hoạt hiển thị thông báo giữa màn hình thay cho alert()
@@ -64,6 +89,7 @@ const RegisterLogin = ({ setIsLoggedIn }) => {
           setIsRegister(false);
           setFullName('');
           setPhone('');
+          setConfirmPassword('');
         }
       } else {
         const res = await loginUser({ email, password });
@@ -316,28 +342,86 @@ const RegisterLogin = ({ setIsLoggedIn }) => {
                   </>
                 )}
 
-                <div style={{ width: '100%' }}>
+                <div style={{ width: '100%', position: 'relative' }}>
                   <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"} 
                     placeholder={isRegister ? "Mật khẩu bảo mật (tối thiểu 8 ký tự)" : "Mật khẩu bảo mật"}
                     required
                     minLength={isRegister ? 8 : undefined}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    style={inputStyle} 
+                    style={{ ...inputStyle, paddingRight: '45px' }} 
                     onFocus={(e) => e.target.style.borderColor = '#10b981'}
                     onBlur={(e) => e.target.style.borderColor = '#1f2937'}
                   />
-                  {isRegister && (
-                    <p style={{ margin: '6px 0 0 2px', fontSize: '12px', color: password.length > 0 && password.length < 8 ? '#ef4444' : '#6b7280', fontWeight: '500', transition: 'color 0.2s' }}>
-                      {password.length > 0 && password.length < 8
-                        ? `⚠️ Cần thêm ${8 - password.length} ký tự nữa (tối thiểu 8 ký tự)`
-                        : password.length >= 8
-                        ? '✅ Độ dài mật khẩu hợp lệ'
-                        : '🔒 Mật khẩu phải có ít nhất 8 ký tự'}
+                  <span
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '14px',
+                      top: '24px',
+                      transform: 'translateY(-50%)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: '#94a3b8',
+                      transition: 'color 0.2s',
+                      userSelect: 'none'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.color = '#10b981'}
+                    onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+                  >
+                    {showPassword ? <EyeOpen /> : <EyeSlashed />}
+                  </span>
+                  {isRegister && password.length > 0 && (
+                    <p style={{ margin: '6px 0 0 2px', fontSize: '12px', color: password.length < 8 ? '#ef4444' : '#10b981', fontWeight: '500', transition: 'color 0.2s' }}>
+                      {password.length < 8
+                        ? '🔒 Mật khẩu phải có ít nhất 8 ký tự'
+                        : '✅ Độ dài mật khẩu hợp lệ'}
                     </p>
                   )}
                 </div>
+
+                {isRegister && (
+                  <div style={{ width: '100%', position: 'relative' }}>
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="Nhập lại mật khẩu"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      style={{ ...inputStyle, paddingRight: '45px' }} 
+                      onFocus={(e) => e.target.style.borderColor = '#10b981'}
+                      onBlur={(e) => e.target.style.borderColor = '#1f2937'}
+                    />
+                    <span
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '14px',
+                        top: '24px',
+                        transform: 'translateY(-50%)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: '#94a3b8',
+                        transition: 'color 0.2s',
+                        userSelect: 'none'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.color = '#10b981'}
+                      onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+                    >
+                      {showPassword ? <EyeOpen /> : <EyeSlashed />}
+                    </span>
+                    {confirmPassword.length > 0 && (
+                      <p style={{ margin: '6px 0 0 2px', fontSize: '12px', color: password === confirmPassword ? '#10b981' : '#ef4444', fontWeight: '500', transition: 'color 0.2s' }}>
+                        {password === confirmPassword 
+                          ? '✅ Mật khẩu trùng khớp' 
+                          : '❌ Mật khẩu nhập lại chưa chính xác'}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Phần quên mật khẩu nằm dưới ô nhập mật khẩu và trên nút đăng nhập */}
                 {!isRegister && (

@@ -96,6 +96,7 @@ async function seed() {
         address: "123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh",
         license_image: licenseImages.license,
         hygiene_image: licenseImages.hygiene,
+        owner_username: "chuquan1",
         status: "approved"
       },
       {
@@ -105,6 +106,7 @@ async function seed() {
         address: "456 Đường Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh",
         license_image: licenseImages.license,
         hygiene_image: licenseImages.hygiene,
+        owner_username: "chuquan2",
         status: "approved"
       },
       {
@@ -114,6 +116,7 @@ async function seed() {
         address: "789 Đường Sư Vạn Hạnh, Quận 10, TP. Hồ Chí Minh",
         license_image: licenseImages.license,
         hygiene_image: licenseImages.hygiene,
+        owner_username: "chuquan3",
         status: "approved"
       }
     ]);

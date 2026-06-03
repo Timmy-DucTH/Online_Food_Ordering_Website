@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FoodCard from '../components/FoodCard';
 
@@ -15,6 +15,7 @@ const initialVirtualMessages = {
 
 const Home = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [cart, setCart] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [foods, setFoods] = useState([]);
@@ -47,44 +48,8 @@ const Home = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState('');
   // For virtual contacts simulation
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [virtualMessages, setVirtualMessages] = useState(initialVirtualMessages);
-
-  // Communities States
-  const [activeCommunity, setActiveCommunity] = useState(null);
-  const communitiesList = [
-    {
-      id: 'milktea',
-      name: 'Hội mê trà sữa 🥤',
-      description: 'Nơi hội tụ của các tín đồ trà sữa trân châu đường đen, matcha chi ngậy...',
-      members: 1420,
-      activeToday: 48,
-      posts: [
-        { author: 'Lê Minh Anh', avatar: '👩', content: 'Mọi người cho hỏi trà sữa Gong Cha dạo này có vị mới gì ngon không? Thấy review Matcha Latte ngon lắm.', likes: 24, replies: 5 },
-        { author: 'Trần Hoàng', avatar: '👨', content: 'Topping trân châu hoàng kim của Koi The vẫn là chân ái cuộc đời!!!', likes: 45, replies: 12 }
-      ]
-    },
-    {
-      id: 'brokenrice',
-      name: 'Hội nghiện sườn bì chả 🍖',
-      description: 'Tìm kiếm dĩa cơm tấm ngon nhất Sài Gòn/Hà Nội. Cơm tấm phải có nước mắm kẹo!',
-      members: 2310,
-      activeToday: 62,
-      posts: [
-        { author: 'Nguyễn Duy', avatar: '👨', content: 'Cơm tấm bãi rác quận 4 đắt xắt ra miếng nhưng sườn ướp ngon cực kì.', likes: 89, replies: 18 },
-        { author: 'Vy Nguyễn', avatar: '👩', content: 'Ai biết chỗ bán cơm tấm ngon khu vực Thủ Đức không ạ? Thèm sườn nướng mỡ hành quá.', likes: 12, replies: 7 }
-      ]
-    },
-    {
-      id: 'vegetarian',
-      name: 'Cộng đồng ăn chay 🌱',
-      description: 'Chia sẻ các địa điểm ăn chay thanh tịnh, công thức món chay bổ dưỡng mỗi ngày.',
-      members: 950,
-      activeToday: 15,
-      posts: [
-        { author: 'Diệu Thảo', avatar: '👩', content: 'Hôm nay tự nấu bún riêu chay từ đậu hũ và nấm đùi gà ngon xỉu luôn cả nhà ơi.', likes: 38, replies: 4 }
-      ]
-    }
-  ];
 
   // Hot food reviews (Right Sidebar)
   const hotReviews = [
@@ -92,12 +57,21 @@ const Home = () => {
     { id: 2, title: 'Cơm Tấm sườn nướng mật ong', author: 'Khoai Lang Thang', rating: 4.8, img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300' }
   ];
 
-  // Online Friends List
-  const onlineFriends = [
-    { id: 'friend1', name: 'Đỗ Duy Quang', avatar: '👦', role: 'customer', email: 'quang@gmail.com' },
-    { id: 'friend2', name: 'Nguyễn Đức Huy', avatar: '👦', role: 'customer', email: 'huy@gmail.com' },
-    { id: 'friend3', name: 'Lê Quỳnh Anh', avatar: '👩', role: 'customer', email: 'quynhanh@gmail.com' }
-  ];
+  // Fetch real messages
+  const fetchMessages = useCallback((otherUserId) => {
+    fetch(`/api/messages/${otherUserId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        setChatMessages(data.data);
+      }
+    })
+    .catch(err => console.error('Error loading messages:', err));
+  }, []);
 
   // Fetch real food data from API
   useEffect(() => {
@@ -138,6 +112,30 @@ const Home = () => {
     }
   }, [isLoggedIn]);
 
+  // Handle redirect/state passing from other pages (e.g. Navbar support click)
+  useEffect(() => {
+    if (location.state && location.state.tab) {
+      setActiveTab(location.state.tab);
+      const selectContactId = location.state.selectContactId;
+      if (selectContactId) {
+        if (selectContactId === 'system_default_1') {
+          const systemContact = {
+            _id: 'system_default_1',
+            full_name: '🛡️ Hệ thống TasteByte',
+            email: 'system@tastebyte.vn',
+            role: 'system',
+            isVirtual: false
+          };
+          setSelectedContact(systemContact);
+          setChatMessages([]);
+          fetchMessages('system_default_1');
+        }
+      }
+      // Clear location state to prevent running on every render/reload
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate, fetchMessages]);
+
   // Load feed posts
   const loadPosts = useCallback(async () => {
     try {
@@ -174,8 +172,6 @@ const Home = () => {
     if (activeTab === 'feed') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       loadPosts();
-    } else if (activeTab === 'notifications') {
-      loadNotifications();
     } else if (activeTab === 'chat') {
       // Load chat contacts
       fetch('/api/messages/users', {
@@ -186,7 +182,24 @@ const Home = () => {
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success') {
-          setChatContacts(data.data);
+          const otherContacts = data.data.filter(c => c._id !== 'system_default_1');
+          const systemContact = data.data.find(c => c._id === 'system_default_1') || {
+            _id: 'system_default_1',
+            full_name: '🛡️ Hệ thống TasteByte',
+            email: 'system@tastebyte.vn',
+            role: 'system',
+            isVirtual: false
+          };
+          
+          systemContact.isVirtual = false;
+          const contactList = [systemContact, ...otherContacts];
+          setChatContacts(contactList);
+          
+          if (!selectedContact) {
+            setSelectedContact(systemContact);
+            setChatMessages([]);
+            fetchMessages('system_default_1');
+          }
         }
       })
       .catch(err => console.error('Error fetching contacts:', err));
@@ -203,8 +216,7 @@ const Home = () => {
     }
   }, [isLoggedIn, loadNotifications]);
 
-  // Compute unread notifications count
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+
 
   const checkAuthAndExecute = (callback) => {
     const token = localStorage.getItem('token');
@@ -258,7 +270,7 @@ const Home = () => {
   const filteredFoods = foods.filter(food => {
     const matchCat = selectedCategory === 'Tất cả' || food.category === selectedCategory;
     const matchSearch = food.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (food.restaurant_id?.store_name || food.restaurant_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+      (food.restaurant_id?.display_name || food.restaurant_id?.store_name || food.restaurant_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchCat && matchSearch;
   });
 
@@ -388,6 +400,8 @@ const Home = () => {
     }
   };
 
+
+
   // Select chat contact
   const handleSelectContact = (contact) => {
     setSelectedContact(contact);
@@ -397,22 +411,6 @@ const Home = () => {
       setChatMessages([]);
       fetchMessages(contact._id);
     }
-  };
-
-  // Fetch real messages
-  const fetchMessages = (otherUserId) => {
-    fetch(`/api/messages/${otherUserId}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.status === 'success') {
-        setChatMessages(data.data);
-      }
-    })
-    .catch(err => console.error('Error loading messages:', err));
   };
 
   // Send message
@@ -438,17 +436,26 @@ const Home = () => {
           ...prev,
           [selectedContact._id]: [...(prev[selectedContact._id] || []), myMsg]
         };
-        // Update current log view as well
         setChatMessages(updated[selectedContact._id]);
         return updated;
       });
 
-      // Bot smart auto reply delay
+      // Simulate bot reply
       setTimeout(() => {
-        let botReply = 'Cảm ơn bạn đã liên hệ với tôi!';
         const query = text.toLowerCase();
+        let botReply = '';
 
-        if (selectedContact._id === 'driver_default_1') {
+        if (selectedContact._id === 'system_default_1') {
+          if (query.includes('đơn hàng') || query.includes('mua') || query.includes('món')) {
+            botReply = 'Hệ thống đã nhận thông tin. Để kiểm tra chi tiết đơn hàng hoặc yêu cầu chỉnh sửa, bạn hãy nhắn tin trực tiếp với Cửa hàng hoặc Shipper giao hàng nhé!';
+          } else if (query.includes('chào') || query.includes('hello') || query.includes('hi')) {
+            botReply = 'Xin chào! Tôi là Trợ lý Hệ thống tự động của TasteByte. Rất hân hạnh được hỗ trợ bạn. Bạn có câu hỏi gì cần hỗ trợ không?';
+          } else if (query.includes('lỗi') || query.includes('hỏng') || query.includes('không được')) {
+            botReply = 'Chúng tôi rất tiếc vì sự cố bạn gặp phải. Kỹ thuật viên hệ thống đã nhận thông báo lỗi và đang khắc phục. Xin vui lòng đợi trong giây lát!';
+          } else {
+            botReply = 'Cảm ơn bạn đã phản hồi tới Hệ thống TasteByte. Yêu cầu của bạn đã được lưu lại và chuyển tiếp đến bộ phận CSKH để xử lý sớm nhất.';
+          }
+        } else if (selectedContact._id === 'driver_default_1') {
           if (query.includes('đồ ăn') || query.includes('khi nào') || query.includes('bao lâu')) {
             botReply = 'Mình đang nhận hàng tại quán rồi nhé, tầm 5 - 10 phút nữa mình giao qua liền nha!';
           } else if (query.includes('tương ớt') || query.includes('nhiều tương')) {
@@ -536,6 +543,8 @@ const Home = () => {
         clearCart={clearCart}
         openPendingModal={() => setShowModal(true)}
         isLoggedIn={isLoggedIn}
+        notifications={notifications}
+        setNotifications={setNotifications}
       />
 
       {/* CORE 3-COLUMN LAYOUT CONTAINER */}
@@ -567,14 +576,6 @@ const Home = () => {
             <span>📰</span> Bảng Tin (Feed)
           </div>
 
-          <div 
-            style={sidebarItemStyle('communities')} 
-            onClick={() => setActiveTab('communities')}
-            onMouseEnter={(e) => { if (activeTab !== 'communities') e.currentTarget.style.backgroundColor = '#1f2937'; }}
-            onMouseLeave={(e) => { if (activeTab !== 'communities') e.currentTarget.style.backgroundColor = 'transparent'; }}
-          >
-            <span>👥</span> Nhóm Cộng Đồng
-          </div>
 
           <div 
             style={sidebarItemStyle('chat')} 
@@ -588,22 +589,7 @@ const Home = () => {
             <span>💬</span> Nhắn Tin (Chat)
           </div>
 
-          <div 
-            style={sidebarItemStyle('notifications')} 
-            onClick={() => {
-              if (!isLoggedIn) return navigate('/login');
-              setActiveTab('notifications');
-            }}
-            onMouseEnter={(e) => { if (activeTab !== 'notifications') e.currentTarget.style.backgroundColor = '#1f2937'; }}
-            onMouseLeave={(e) => { if (activeTab !== 'notifications') e.currentTarget.style.backgroundColor = 'transparent'; }}
-          >
-            <span>🔔</span> Thông Báo
-            {isLoggedIn && unreadCount > 0 && (
-              <span style={{ position: 'absolute', right: '16px', backgroundColor: '#ef4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold' }}>
-                {unreadCount}
-              </span>
-            )}
-          </div>
+
         </div>
 
         {/* ==============================================
@@ -886,77 +872,6 @@ const Home = () => {
             </div>
           )}
 
-          {/* TAB 3: COMMUNITIES VIEW */}
-          {activeTab === 'communities' && (
-            <div>
-              {activeCommunity ? (
-                // Selected Community Detail View
-                <div style={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
-                  <button 
-                    onClick={() => setActiveCommunity(null)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: 'none', color: '#00e676', cursor: 'pointer', fontWeight: 'bold', marginBottom: '16px', fontSize: '14px' }}
-                  >
-                    ⬅️ Quay lại danh sách nhóm
-                  </button>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', paddingBottom: '16px', marginBottom: '20px' }}>
-                    <div>
-                      <h2 style={{ margin: 0, color: '#f1f5f9', fontSize: '24px' }}>{activeCommunity.name}</h2>
-                      <p style={{ color: '#94a3b8', fontSize: '14px', margin: '4px 0 0 0' }}>{activeCommunity.description}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ display: 'block', fontWeight: 'bold', color: '#00e676', fontSize: '18px' }}>{activeCommunity.members}</span>
-                      <span style={{ color: '#64748b', fontSize: '11px' }}>Thành viên ({activeCommunity.activeToday} đang online)</span>
-                    </div>
-                  </div>
-
-                  <h3 style={{ fontSize: '16px', color: '#00e676', margin: '0 0 16px 0' }}>Bài đăng sôi nổi gần đây</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {activeCommunity.posts.map((cp, idx) => (
-                      <div key={idx} style={{ backgroundColor: '#0b0f19', border: '1px solid #1f2937', borderRadius: '10px', padding: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                          <span style={{ fontSize: '16px' }}>{cp.avatar}</span>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#e2e8f0' }}>{cp.author}</span>
-                          <span style={{ fontSize: '10px', color: '#64748b', marginLeft: 'auto' }}>1 giờ trước</span>
-                        </div>
-                        <p style={{ fontSize: '13px', color: '#cbd5e1', margin: '0 0 12px 0', lineHeight: '1.5' }}>{cp.content}</p>
-                        <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#64748b' }}>
-                          <span>❤️ {cp.likes} Lượt thích</span>
-                          <span>💬 {cp.replies} Lượt bình luận</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                // Communities Directory List
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                  {communitiesList.map(comm => (
-                    <div 
-                      key={comm.id}
-                      onClick={() => setActiveCommunity(comm)}
-                      style={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '20px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(0,0,0,0.15)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1f2937'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <h3 style={{ margin: '0 0 6px 0', color: '#f1f5f9', fontSize: '18px' }}>{comm.name}</h3>
-                          <p style={{ color: '#cbd5e1', fontSize: '13px', margin: 0 }}>{comm.description}</p>
-                        </div>
-                        <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
-                          🧑‍🤝‍🧑 {comm.members}
-                        </div>
-                      </div>
-                      <div style={{ marginTop: '12px', borderTop: '1px solid #1f2937', paddingTop: '10px', fontSize: '12px', color: '#64748b' }}>
-                        Có <strong>{comm.activeToday} bài viết/tương tác</strong> trong hôm nay. Nhấn để tham gia thảo luận.
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* TAB 4: CHAT SYSTEM */}
           {activeTab === 'chat' && (
@@ -964,11 +879,40 @@ const Home = () => {
               {/* Chat - Left Pane: Contact list */}
               <div style={{ width: '35%', borderRight: '1px solid #1f2937', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '14px', borderBottom: '1px solid #1f2937', fontWeight: 'bold', color: '#00e676', fontSize: '15px' }}>Hội thoại</div>
+                
+                {/* 🔍 Search box (matching email/username only) */}
+                <div style={{ padding: '10px 14px', borderBottom: '1px solid #1f2937' }}>
+                  <input
+                    type="text"
+                    placeholder="Tìm theo username (email)..."
+                    value={chatSearchQuery}
+                    onChange={(e) => setChatSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: '#0b0f19',
+                      border: '1px solid #1f2937',
+                      borderRadius: '6px',
+                      color: '#f1f5f9',
+                      fontSize: '12px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
                 <div style={{ flex: 1, overflowY: 'auto' }}>
-                  {chatContacts.length === 0 ? (
-                    <div style={{ padding: '20px', color: '#64748b', fontSize: '13px', textAlign: 'center' }}>Không tìm thấy người liên lạc.</div>
-                  ) : (
-                    chatContacts.map(c => {
+                  {(() => {
+                    const filteredContacts = chatContacts.filter(c => {
+                      if (!chatSearchQuery.trim()) return true;
+                      return c.email && c.email.toLowerCase().includes(chatSearchQuery.toLowerCase());
+                    });
+                    
+                    if (filteredContacts.length === 0) {
+                      return <div style={{ padding: '20px', color: '#64748b', fontSize: '13px', textAlign: 'center' }}>Không tìm thấy người liên lạc.</div>;
+                    }
+                    
+                    return filteredContacts.map(c => {
                       const isActive = selectedContact && selectedContact._id === c._id;
                       return (
                         <div
@@ -996,8 +940,8 @@ const Home = () => {
                           </div>
                         </div>
                       );
-                    })
-                  )}
+                    });
+                  })()}
                 </div>
               </div>
 
@@ -1076,50 +1020,7 @@ const Home = () => {
             </div>
           )}
 
-          {/* TAB 5: SOCIAL NOTIFICATIONS */}
-          {activeTab === 'notifications' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {notifications.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '12px', color: '#64748b' }}>
-                  <div style={{ fontSize: '32px', marginBottom: '10px' }}>🔔</div>
-                  <p>Hộp thư thông báo xã hội của bạn đang trống.</p>
-                </div>
-              ) : (
-                notifications.map(n => (
-                  <div 
-                    key={n._id}
-                    onClick={() => { if (!n.is_read) handleMarkNotificationRead(n._id); }}
-                    style={{
-                      backgroundColor: n.is_read ? '#111827' : 'rgba(16, 185, 129, 0.08)',
-                      border: '1px solid #1f2937',
-                      borderColor: n.is_read ? '#1f2937' : '#10b981',
-                      borderRadius: '10px',
-                      padding: '16px',
-                      cursor: n.is_read ? 'default' : 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      gap: '12px',
-                      alignItems: 'flex-start'
-                    }}
-                  >
-                    <span style={{ fontSize: '20px' }}>
-                      {n.type === 'order_status' ? '🛵' : n.type === 'discount' ? '🧧' : '💬'}
-                    </span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ margin: 0, fontSize: '14px', color: '#f1f5f9', fontWeight: 'bold' }}>{n.title}</h4>
-                        <span style={{ fontSize: '10px', color: '#64748b' }}>{new Date(n.createdAt).toLocaleDateString('vi-VN')}</span>
-                      </div>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#cbd5e1', lineHeight: '1.4' }}>{n.message}</p>
-                    </div>
-                    {!n.is_read && (
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00e676', marginTop: '6px' }} />
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+
 
         </div>
 
@@ -1141,31 +1042,7 @@ const Home = () => {
           overflow: 'hidden',
           position: 'relative'
         }}>
-          {/* Online Friends List */}
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '1px', borderBottom: '1px solid #1f2937', paddingBottom: '8px' }}>Bạn bè online</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-            {onlineFriends.map(friend => (
-              <div 
-                key={friend.id} 
-                onClick={() => {
-                  if (!isLoggedIn) return navigate('/login');
-                  setActiveTab('chat');
-                  handleSelectContact(friend);
-                }}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '4px', borderRadius: '6px' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1f2937'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-              >
-                <div style={{ position: 'relative' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#1f2937', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', border: '1px solid #64748b' }}>
-                    {friend.avatar}
-                  </div>
-                  <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00e676', border: '1.5px solid #111827' }} />
-                </div>
-                <span style={{ fontSize: '13px', fontWeight: '500', color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{friend.name}</span>
-              </div>
-            ))}
-          </div>
+
 
           {/* Trending KOL Reviews */}
           <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '1px', borderBottom: '1px solid #1f2937', paddingBottom: '8px' }}>HOT REVIEW</h4>
@@ -1214,10 +1091,12 @@ const Home = () => {
           }}
           title={rightSidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
         >
-          {rightSidebarOpen ? '➡️' : '👥'}
+          {rightSidebarOpen ? '➡️' : '🔥'}
         </button>
 
       </div>
+
+
 
       {showModal && (
         <div style={{

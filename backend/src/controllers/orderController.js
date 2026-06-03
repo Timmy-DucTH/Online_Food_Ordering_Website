@@ -141,6 +141,20 @@ exports.updateOrderStatus = async (req, res) => {
       if (userCheck && userCheck.credit_score < 30) {
         userCheck.status = 'banned';
         await userCheck.save();
+
+        const Notification = require('../models/notification');
+        const exists = await Notification.findOne({
+          user_id: order.creator_id,
+          title: 'Tài khoản bị khóa tự động do uy tín thấp'
+        });
+        if (!exists) {
+          await Notification.create({
+            user_id: order.creator_id,
+            title: 'Tài khoản bị khóa tự động do uy tín thấp',
+            message: `Điểm uy tín của bạn hiện tại là ${userCheck.credit_score} điểm, thấp hơn quy định cho phép (< 30 điểm). Hệ thống đã tự động khóa tài khoản của bạn.`,
+            type: 'system'
+          });
+        }
       }
     }
 
