@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import API, { getRevenueReportAPI, getTopSellingItemsAPI, getProfileAPI } from '../services/api';
+import ReviewSection from '../components/ReviewSection';
 
 const Restaurant = () => {
   const navigate = useNavigate();
@@ -1006,7 +1007,9 @@ const Restaurant = () => {
                 </div>
               </div>
             )}
-
+            {activeTab === 'reviews' && (
+              <ReviewSection restaurantId={shopData?._id} />
+            )}
           </div>
 
         </div>
