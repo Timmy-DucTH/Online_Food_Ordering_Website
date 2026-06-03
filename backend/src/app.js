@@ -12,7 +12,8 @@ app.use(cors());
 
 // express.json(): Bộ giải mã giúp Backend hiểu được dữ liệu định dạng JSON do Frontend gửi lên 
 // (Ví dụ: Khi khách hàng điền Form Đăng ký hoặc tạo Đơn hàng, dữ liệu gửi lên dạng JSON sẽ được dịch ra thành Object trong code).
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // express.urlencoded(): Giúp xử lý dữ liệu gửi lên từ các form HTML truyền thống.
 app.use(express.urlencoded({ extended: true }));

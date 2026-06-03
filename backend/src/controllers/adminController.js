@@ -351,3 +351,55 @@ exports.updateOrderStatus = async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
+// 10. Lấy danh sách cửa hàng đang chờ duyệt hồ sơ
+exports.getPendingRestaurants = async (req, res) => {
+  try {
+    const pendingRestaurants = await Restaurant.find({ status: 'pending' })
+      .populate('owner_id', 'full_name email phone')
+      .sort({ createdAt: -1 });
+      
+    res.status(200).json({ status: 'success', restaurants: pendingRestaurants });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// 11. Phê duyệt hoặc từ chối hồ sơ cửa hàng (UC-22)
+exports.approveRestaurant = async (req, res) => {
+  try {
+    const { status, reason } = req.body; // status: 'approved' hoặc 'rejected'
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ status: 'fail', message: 'Trạng thái không hợp lệ!' });
+    }
+
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      req.params.id, 
+      { status }, 
+      { new: true }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy cửa hàng!' });
+    }
+
+    // Nếu duyệt, kích hoạt luôn tài khoản chủ quán
+    if (status === 'approved') {
+      await User.findByIdAndUpdate(restaurant.owner_id, { status: 'active' });
+    }
+
+    // Gửi thông báo cho chủ quán
+    await Notification.create({
+      user_id: restaurant.owner_id,
+      title: status === 'approved' ? 'Hồ sơ cửa hàng đã được duyệt!' : 'Hồ sơ cửa hàng bị từ chối',
+      message: status === 'approved' 
+        ? 'Chúc mừng! Cửa hàng của bạn đã có thể bắt đầu bán hàng.' 
+        : `Hồ sơ bị từ chối. Lý do: ${reason || 'Vui lòng cập nhật lại giấy tờ pháp lý.'}`,
+      type: 'system'
+    });
+
+    res.status(200).json({ status: 'success', message: `Đã ${status} hồ sơ cửa hàng!`, restaurant });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};

@@ -23,7 +23,9 @@ router.delete('/foods/:id', adminController.deleteFood);
 
 // Quản lý đơn hàng
 router.get('/orders', adminController.getAllOrders);
-router.put('/orders/:id/status', adminController.updateOrderStatus);
+//router.put('/orders/:id/status', adminController.updateOrderStatus); 
+// merchant bị chặn vì updateOrderStatus đang ở trong adminComtroller thay vì trong restaurantController
+// dời sang orderRoutes
 
 // Quản lý cửa hàng / Đối tác
 router.get('/restaurants', restaurantController.getRestaurants); // Danh sách cửa hàng
