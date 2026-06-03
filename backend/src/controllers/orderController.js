@@ -30,6 +30,20 @@ const checkAndBanUser = async (userId) => {
   }
 };
 
+// Helper điều chỉnh điểm uy tín của user và giới hạn từ 0 - 100
+const adjustCreditScore = async (userId, amount) => {
+  try {
+    const user = await User.findById(userId);
+    if (user) {
+      user.credit_score = Math.max(0, Math.min(100, (user.credit_score || 0) + amount));
+      await user.save();
+    }
+  } catch (e) {
+    console.error('Error adjusting user credit score:', e.message);
+  }
+};
+
+
 // NGHIỆP VỤ 4: Khởi tạo/Lập đơn hàng cá nhân hoặc đơn hàng nhóm (BM5, BM6, QĐ6, QĐ7, QĐ8)
 exports.createOrder = async (req, res) => {
   try {
@@ -150,6 +164,28 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy mã đơn hàng này!' });
     }
 
+    // Kiểm tra quyền cập nhật đơn hàng:
+    // - Admin được toàn quyền
+    // - Merchant chỉ được cập nhật đơn hàng thuộc về cửa hàng của mình
+    // - Customer chỉ được cập nhật đơn hàng của chính mình
+    if (req.user.role === 'merchant') {
+      const myRestaurant = await Restaurant.findOne({ owner_id: req.user.id });
+      if (!myRestaurant || myRestaurant._id.toString() !== order.store_id.toString()) {
+        return res.status(403).json({
+          status: 'fail',
+          message: 'Từ chối truy cập! Bạn không sở hữu cửa hàng nhận đơn hàng này.'
+        });
+      }
+    } else if (req.user.role !== 'admin') {
+      // Khách hàng thường
+      if (order.creator_id.toString() !== req.user.id) {
+        return res.status(403).json({
+          status: 'fail',
+          message: 'Từ chối truy cập! Bạn không có quyền thao tác trên đơn hàng này.'
+        });
+      }
+    }
+
     const oldStatus = order.status;
     order.status = status;
 
@@ -163,7 +199,7 @@ exports.updateOrderStatus = async (req, res) => {
         const deduct = Math.min(15, diffMin - 15);
         const rest = await Restaurant.findById(order.store_id);
         if (rest) {
-          await User.findByIdAndUpdate(rest.owner_id, { $inc: { credit_score: -deduct } });
+          await adjustCreditScore(rest.owner_id, -deduct);
           await Notification.create({
             user_id: rest.owner_id,
             title: 'Trừ điểm uy tín do xác nhận trễ',
@@ -186,7 +222,7 @@ exports.updateOrderStatus = async (req, res) => {
           const deduct = Math.min(15, diffMin - 15);
           const rest = await Restaurant.findById(order.store_id);
           if (rest) {
-            await User.findByIdAndUpdate(rest.owner_id, { $inc: { credit_score: -deduct } });
+            await adjustCreditScore(rest.owner_id, -deduct);
             await Notification.create({
               user_id: rest.owner_id,
               title: 'Trừ điểm uy tín do chuẩn bị trễ',
@@ -208,7 +244,7 @@ exports.updateOrderStatus = async (req, res) => {
         const diffMin = Math.floor((Date.now() - order.shippingAt) / 60000);
         if (diffMin > 15) {
           const deduct = Math.min(15, diffMin - 15);
-          await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: -deduct } });
+          await adjustCreditScore(order.creator_id, -deduct);
           await Notification.create({
             user_id: order.creator_id,
             title: 'Trừ điểm uy tín do nhận hàng trễ',
@@ -222,15 +258,15 @@ exports.updateOrderStatus = async (req, res) => {
       }
 
       // Cộng 1 điểm uy tín cho cả khách và chủ quán khi hoàn thành đơn (QĐ 3)
-      await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: 1 } });
+      await adjustCreditScore(order.creator_id, 1);
       const rest = await Restaurant.findById(order.store_id);
       if (rest) {
-        await User.findByIdAndUpdate(rest.owner_id, { $inc: { credit_score: 1 } });
+        await adjustCreditScore(rest.owner_id, 1);
       }
     }
     else if (status === 'cancelled' && reason === 'Đơn ảo/Hủy không lý do') {
       // Khách hàng hủy đơn không lý do hoặc tạo đơn ảo: Trừ nặng 5 điểm uy tín
-      await User.findByIdAndUpdate(order.creator_id, { $inc: { credit_score: -5 } });
+      await adjustCreditScore(order.creator_id, -5);
       await checkAndBanUser(order.creator_id);
     }
 

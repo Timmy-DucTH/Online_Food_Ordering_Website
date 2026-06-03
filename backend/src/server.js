@@ -41,8 +41,19 @@ if (!process.env.JWT_SECRET) {
 console.log("⏳ Đang kết nối tới cơ sở dữ liệu MongoDB Atlas Cloud...");
 
 mongoose.connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log("🎉 KẾT NỐI THÀNH CÔNG TỚI MONGODB ATLAS CLOUD!");
+    
+    // Tự động dọn dẹp và giới hạn lại điểm uy tín tối đa là 100 cho các tài khoản cũ trong DB
+    try {
+      const User = require('./models/user');
+      const result = await User.updateMany({ credit_score: { $gt: 100 } }, { credit_score: 100 });
+      if (result.modifiedCount > 0) {
+        console.log(`🧹 Đã dọn dẹp và giới hạn lại điểm uy tín cho ${result.modifiedCount} tài khoản vượt quá 100 điểm.`);
+      }
+    } catch (dbErr) {
+      console.error("Lỗi khi tự động dọn dẹp dữ liệu điểm uy tín:", dbErr.message);
+    }
     
     app.listen(PORT, () => {
       console.log(`🚀 Server Backend đang chạy mượt mà tại địa chỉ: http://localhost:${PORT}`);

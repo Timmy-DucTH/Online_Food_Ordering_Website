@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 // 🌟 IMPORT HÀM API ĐỔI MẬT KHẨU & LỊCH SỬ ĐƠN HÀNG TỪ SERVICES
-import { changePasswordAPI, getMyOrdersAPI, getProfileAPI } from '../services/api';
+import { changePasswordAPI, getMyOrdersAPI, getProfileAPI, createReviewAPI } from '../services/api';
 
 const Profile = ({ openPendingModal }) => {
   const navigate = useNavigate();
@@ -61,6 +61,11 @@ const Profile = ({ openPendingModal }) => {
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null); // Modal xem chi tiết đơn
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewOrder, setReviewOrder] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   // Auto ẩn Toast sau 3 giây
   useEffect(() => {
@@ -127,6 +132,51 @@ const Profile = ({ openPendingModal }) => {
     } catch (err) {
       // Đọc thông báo trả về từ Backend (nếu có lỗi như mật khẩu cũ nhập sai, trùng mật khẩu cũ...)
       setPwdError(err.response?.data?.message || 'Đã xảy ra lỗi hệ thống khi đổi mật khẩu!');
+    }
+  };
+
+  const handleOpenReviewModal = (order) => {
+    setReviewOrder(order);
+    setReviewRating(5);
+    setReviewComment('');
+    setShowReviewModal(true);
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!reviewOrder) return;
+    try {
+      setReviewSubmitting(true);
+      const currentUserStr = localStorage.getItem('user');
+      const currentUserObj = currentUserStr ? JSON.parse(currentUserStr) : null;
+      const customer_id = currentUserObj?._id;
+      const store_id = reviewOrder.store_id?._id || reviewOrder.store_id;
+
+      if (!customer_id) {
+        setToastMessage('⚠️ Không tìm thấy thông tin người dùng đăng nhập!');
+        setShowToast(true);
+        return;
+      }
+
+      const res = await createReviewAPI({
+        order_id: reviewOrder._id,
+        customer_id,
+        store_id,
+        rating: reviewRating,
+        comment: reviewComment
+      });
+
+      if (res.data.status === 'success') {
+        setToastMessage('⭐ Cảm ơn bạn đã gửi đánh giá!');
+        setShowToast(true);
+        setShowReviewModal(false);
+        setReviewOrder(null);
+      }
+    } catch (err) {
+      setToastMessage(err.response?.data?.message || 'Có lỗi xảy ra khi gửi đánh giá.');
+      setShowToast(true);
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -496,17 +546,28 @@ const Profile = ({ openPendingModal }) => {
                             <div style={{ borderTop: '1px solid #1f2937', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
                               <div style={{ fontSize: '12px', color: '#64748b' }}>📅 {date} · <span style={{ fontFamily: 'monospace', color: '#475569' }}>#{shortId}</span></div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <div style={{ textAlign: 'right' }}>
-                                  <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>Thành tiền</div>
-                                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#f97316' }}>{(order.total_price || 0).toLocaleString()}đ</div>
-                                </div>
+                                {order.status !== 'completed' && (
+                                  <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>Thành tiền</div>
+                                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#f97316' }}>{(order.total_price || 0).toLocaleString()}đ</div>
+                                  </div>
+                                )}
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                  <button
-                                    onClick={() => navigate('/home')}
-                                    style={{ padding: '8px 16px', backgroundColor: 'transparent', border: '1px solid #374151', color: '#94a3b8', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'all 0.2s' }}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.color = '#10b981'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.color = '#94a3b8'; }}
-                                  >Mua lại</button>
+                                  {order.status === 'completed' ? (
+                                    <button
+                                      onClick={() => handleOpenReviewModal(order)}
+                                      style={{ padding: '8px 16px', backgroundColor: '#10b981', border: 'none', color: '#ffffff', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}
+                                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#059669'}
+                                      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#10b981'}
+                                    >Viết đánh giá</button>
+                                  ) : (
+                                    <button
+                                      onClick={() => navigate('/home')}
+                                      style={{ padding: '8px 16px', backgroundColor: 'transparent', border: '1px solid #374151', color: '#94a3b8', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', transition: 'all 0.2s' }}
+                                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.color = '#10b981'; }}
+                                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.color = '#94a3b8'; }}
+                                    >Mua lại</button>
+                                  )}
                                   <button
                                     onClick={() => setSelectedOrder(order)}
                                     style={{ padding: '8px 16px', backgroundColor: '#f97316', border: 'none', color: '#ffffff', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(249,115,22,0.3)' }}
@@ -727,14 +788,141 @@ const Profile = ({ openPendingModal }) => {
                 </div>
               </div>
 
-              <button
-                onClick={() => setSelectedOrder(null)}
-                style={{ width: '100%', marginTop: '20px', padding: '12px', backgroundColor: '#10b981', border: 'none', color: '#fff', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '15px' }}
-              >Đóng</button>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <button
+                  onClick={() => {
+                    setSelectedOrder(null);
+                    navigate('/home');
+                  }}
+                  style={{ 
+                    flex: 1, 
+                    padding: '12px', 
+                    backgroundColor: 'transparent', 
+                    border: '1.5px solid #374151', 
+                    color: '#94a3b8', 
+                    borderRadius: '8px', 
+                    fontWeight: '600', 
+                    cursor: 'pointer', 
+                    fontSize: '15px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.color = '#10b981'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.color = '#94a3b8'; }}
+                >
+                  Mua lại
+                </button>
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  style={{ 
+                    flex: 1, 
+                    padding: '12px', 
+                    backgroundColor: '#10b981', 
+                    border: 'none', 
+                    color: '#fff', 
+                    borderRadius: '8px', 
+                    fontWeight: '600', 
+                    cursor: 'pointer', 
+                    fontSize: '15px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#059669'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#10b981'}
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
         );
       })()}
+
+      {/* 📝 MODAL VIẾT ĐÁNH GIÁ ĐƠN HÀNG */}
+      {showReviewModal && reviewOrder && (
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(3, 7, 18, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10003, backdropFilter: 'blur(6px)' }}
+          onClick={() => setShowReviewModal(false)}
+        >
+          <div
+            style={{ backgroundColor: '#111827', border: '1.5px solid #10b981', borderRadius: '16px', padding: '30px', maxWidth: '450px', width: '90%', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', boxSizing: 'border-box' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, color: '#ffffff', fontSize: '18px', fontWeight: '800' }}>Viết Đánh Giá Đơn Hàng</h3>
+              <button onClick={() => setShowReviewModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+
+            <form onSubmit={handleSubmitReview}>
+              {/* Rating selection (5 stars) */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewRating(star)}
+                    style={{ 
+                      background: 'none', border: 'none', cursor: 'pointer', fontSize: '32px', padding: 0,
+                      color: star <= reviewRating ? '#fbbf24' : '#475569', transition: 'color 0.2s',
+                      transform: star <= reviewRating ? 'scale(1.1)' : 'scale(1)'
+                    }}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+
+              {/* Text comment */}
+              <textarea
+                rows="4"
+                required
+                style={{ 
+                  width: '100%', boxSizing: 'border-box', padding: '12px', 
+                  backgroundColor: '#0b0f19', border: '1px solid #1f2937', 
+                  borderRadius: '8px', color: '#ffffff', fontSize: '14px', 
+                  outline: 'none', resize: 'vertical', marginBottom: '20px' 
+                }}
+                placeholder="Chia sẻ nhận xét của bạn về món ăn và dịch vụ của cửa hàng nhé..."
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+              />
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowReviewModal(false)}
+                  style={{ 
+                    flex: 1, padding: '12px', backgroundColor: 'transparent', 
+                    border: '1.5px solid #374151', color: '#94a3b8', 
+                    borderRadius: '8px', fontWeight: '600', cursor: 'pointer', 
+                    fontSize: '14px', transition: 'all 0.2s' 
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.color = '#94a3b8'; }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={reviewSubmitting}
+                  style={{ 
+                    flex: 1, padding: '12px', backgroundColor: '#10b981', 
+                    border: 'none', color: '#fff', borderRadius: '8px', 
+                    fontWeight: '600', cursor: reviewSubmitting ? 'not-allowed' : 'pointer', 
+                    fontSize: '14px', transition: 'all 0.2s',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+                    opacity: reviewSubmitting ? 0.7 : 1
+                  }}
+                  onMouseEnter={e => { if(!reviewSubmitting) e.currentTarget.style.backgroundColor = '#059669'; }}
+                  onMouseLeave={e => { if(!reviewSubmitting) e.currentTarget.style.backgroundColor = '#10b981'; }}
+                >
+                  {reviewSubmitting ? 'Đang gửi...' : 'Gửi Đánh Giá'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* CSS Animation cho Toast Box & Spinner */}
       <style>{`

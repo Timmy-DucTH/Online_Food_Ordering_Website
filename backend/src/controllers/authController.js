@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 // Hàm này giúp tự động chuyển trạng thái sang 'banned' nếu điểm < 30.
 // Sau này ở các file khác (ví dụ: orderController khi khách bùng hàng), chỉ cần gọi hàm này.
 const updateWithCreditScore = async (user, pointsToSubtract) => {
-  user.credit_score -= pointsToSubtract;
+  user.credit_score = Math.max(0, Math.min(100, (user.credit_score || 0) - pointsToSubtract));
   
   if (user.credit_score < 30) {
     user.status = 'banned';

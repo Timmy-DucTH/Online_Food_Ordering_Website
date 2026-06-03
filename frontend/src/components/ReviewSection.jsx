@@ -87,10 +87,19 @@ const ReviewSection = ({ restaurantId }) => {
                 <span style={{ fontWeight: 'bold', color: '#10b981' }}>{rev.userId?.full_name || 'Khách hàng ẩn danh'}</span>
                 <span style={{ color: '#fbbf24', fontSize: '16px' }}>{'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</span>
               </div>
-              <p style={{ margin: '0 0 8px 0', color: '#e2e8f0', fontSize: '14px', lineHeight: '1.5' }}>{rev.comment}</p>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>
-                {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
-              </span>
+              <p style={{ margin: '0 0 8px 0', color: '#e2e8f0', fontSize: '14px', lineHeight: '1.5', textAlign: 'left' }}>{rev.comment}</p>
+              
+              {rev.reply_from_store && (
+                <div style={{ marginTop: '10px', padding: '10px 12px', backgroundColor: 'rgba(16, 185, 129, 0.05)', borderLeft: '3px solid #10b981', borderRadius: '4px', fontSize: '13px', color: '#10b981', textAlign: 'left', marginBottom: '8px' }}>
+                  <strong>🏪 Phản hồi từ quán:</strong> {rev.reply_from_store}
+                </div>
+              )}
+
+              <div style={{ textAlign: 'left' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
+                </span>
+              </div>
             </div>
           ))
         )}
