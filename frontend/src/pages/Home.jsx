@@ -564,7 +564,7 @@ const Home = () => {
 
     try {
       const activeRest = foods[0]?.restaurant_id?._id || foods[0]?.restaurant_id || null;
-      const res = await fetch('/api/orders', {
+      const res = await fetch('/api/orders/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -576,7 +576,7 @@ const Home = () => {
           shipping_address: selectedLocation,
           distance_km: 3,
           items: itemsList,
-          members: groupMembers.map(m => m.id)
+          members: []
         })
       });
       const data = await res.json();
