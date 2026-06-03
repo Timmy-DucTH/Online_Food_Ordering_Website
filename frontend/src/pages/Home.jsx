@@ -49,6 +49,9 @@ const colors = {
   }
 };
 
+const vietnameseTextFont = "'Segoe UI', Arial, 'Helvetica Neue', sans-serif";
+const emojiTextFont = "'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
+
 const CATEGORIES = [
   { name: 'Tất cả', icon: '🍽️' },
   { name: 'Burger', icon: '🍔' },
@@ -1124,14 +1127,14 @@ const Home = () => {
                     <span style={{ 
                       alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)',
                       padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '800',
-                      letterSpacing: '1px', marginBottom: '10px'
+                      letterSpacing: '1px', marginBottom: '10px', fontFamily: vietnameseTextFont, lineHeight: 1.2
                     }}>
                       {carouselSlides[carouselIndex].badge}
                     </span>
-                    <h3 style={{ margin: '0 0 6px', fontSize: '22px', fontWeight: '800' }}>
+                    <h3 style={{ margin: '0 0 6px', fontSize: '22px', fontWeight: '800', fontFamily: vietnameseTextFont, lineHeight: 1.25, letterSpacing: 0 }}>
                       {carouselSlides[carouselIndex].title}
                     </h3>
-                    <p style={{ margin: 0, fontSize: '14px', opacity: 0.9, fontWeight: '500' }}>
+                    <p style={{ margin: 0, fontSize: '14px', opacity: 0.9, fontWeight: '500', fontFamily: vietnameseTextFont, lineHeight: 1.45, letterSpacing: 0 }}>
                       {carouselSlides[carouselIndex].subtitle}
                     </p>
 
@@ -1179,8 +1182,8 @@ const Home = () => {
                 backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
                 borderRadius: '16px', padding: '20px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
               }}>
-                <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', color: currentTheme.primary, fontWeight: '800' }}>
-                  Hôm nay ăn gì? Chia sẻ ngay! 😋
+                <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', color: currentTheme.primary, fontWeight: '800', fontFamily: vietnameseTextFont, lineHeight: 1.3, letterSpacing: 0 }}>
+                  Hôm nay ăn gì? Chia sẻ ngay! <span style={{ fontFamily: emojiTextFont, lineHeight: 1 }}>😋</span>
                 </h3>
                 <form onSubmit={handleCreatePost}>
                   <textarea
@@ -1244,8 +1247,8 @@ const Home = () => {
 
               {/* Feed Lists */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>📢</span> Bảng Tin Món Ngon Cộng Đồng
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: vietnameseTextFont, lineHeight: 1.25, letterSpacing: 0 }}>
+                  <span style={{ fontFamily: emojiTextFont, lineHeight: 1 }}>📢</span> Bảng Tin Món Ngon Cộng Đồng
                 </h3>
                 {posts.length === 0 ? (
                   <div style={{ 
@@ -1416,10 +1419,11 @@ const Home = () => {
                   <div style={{ 
                     backgroundColor: currentTheme.panel, padding: '14px 20px', borderRadius: '12px',
                     fontWeight: '800', color: currentTheme.primary, border: `1px solid ${currentTheme.border}`,
+                    fontFamily: vietnameseTextFont, lineHeight: 1.25, letterSpacing: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     boxShadow: `0 4px 15px ${currentTheme.shadow}`
                   }}>
-                    <span>🔥 MÓN NGON KHUYẾN NGHỊ GẦN BẠN</span>
+                    <span><span style={{ fontFamily: emojiTextFont, lineHeight: 1 }}>🔥</span> MÓN NGON KHUYẾN NGHỊ GẦN BẠN</span>
                     {!loading && (
                       <span style={{ fontSize: '12px', color: currentTheme.textMuted, fontWeight: '400' }}>
                         Có {filteredFoods.length} món
