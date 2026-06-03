@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 // Gọi file .env của backend để lấy link database bí mật
-require('dotenv').config({ path: path.join(__dirname, '../backend/src/.env') }); 
+require('dotenv').config({ path: path.join(__dirname, '../backend/.env') }); 
 
 // Import Model 'user' thực tế từ backend để đồng bộ
 const User = require('../backend/src/models/user');
@@ -16,8 +16,12 @@ const mockUsers = [
 
 async function seedDatabase() {
   try {
+    if (!process.env.MONGODB_URI) {
+      throw new Error("Missing MONGODB_URI. Please set it in backend/.env");
+    }
+
     console.log("⏳ Đang kết nối tới MongoDB Atlas Cloud...");
-    await mongoose.connect(process.env.MONGODB_URI || "mongodb+srv://duydq206_db_user:duydq206@cluster0.imdxhvp.mongodb.net/OFOW_Database?retryWrites=true&w=majority");
+    await mongoose.connect(process.env.MONGODB_URI);
     
     console.log("🧹 Đang dọn sạch dữ liệu cũ trong bảng users...");
     await User.deleteMany({}); 
