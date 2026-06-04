@@ -69,18 +69,20 @@ function App() {
 
     const checkBanStatus = async () => {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      // Dừng nếu không có token HOẶC modal ban đang hiển thị (tránh gọi lặp)
+      if (!token || window.__accountBanned) return;
 
       try {
         const res = await fetch('/api/notifications', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        // Trường hợp 1: Backend đã restart và middleware phát hiện ban -> 403
+        // Trường hợp 1: Backend phát hiện ban -> 403
+        // QUAN TRỌNG: KHÔNG xóa token ngay - để tránh kích hoạt 401 redirect trước khi modal hiện
         if (res.status === 403) {
           const data = await res.json();
-          if (data?.status === 'banned') {
-            clearAuthData();
+          if (data?.status === 'banned' && !window.__accountBanned) {
+            window.__accountBanned = true;
             window.dispatchEvent(new CustomEvent('account-banned', {
               detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
             }));
@@ -88,7 +90,7 @@ function App() {
           return;
         }
 
-        // Trường hợp 2: Backend chưa restart -> 200 OK, nhưng kiểm tra nội dung thông báo
+        // Trường hợp 2: 200 OK nhưng kiểm tra nội dung thông báo hệ thống
         if (res.status === 200) {
           const data = await res.json();
           if (data?.status === 'success' && Array.isArray(data.data)) {
@@ -97,8 +99,8 @@ function App() {
               n.type === 'system' &&
               (n.title?.includes('bị khóa') || n.title?.includes('bi khoa'))
             );
-            if (banNotif && localStorage.getItem('token')) {
-              clearAuthData();
+            if (banNotif && localStorage.getItem('token') && !window.__accountBanned) {
+              window.__accountBanned = true;
               window.dispatchEvent(new CustomEvent('account-banned', {
                 detail: { message: banNotif.message || banNotif.title || 'Tài khoản của bạn đã bị khóa.' }
               }));
@@ -117,9 +119,11 @@ function App() {
   }, [isLoggedIn]);
 
   const handleCloseBanModal = () => {
+    // Dọn dẹp token và session chỉ khi user bấm nút - tránh race condition với các polling
+    clearAuthData();
+    window.__accountBanned = false; // Reset flag cho lần đăng nhập sau
     setBanMessage(null);
     setIsLoggedIn(false);
-    clearAuthData();
     window.location.href = '/login';
   };
 

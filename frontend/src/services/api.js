@@ -23,16 +23,14 @@ API.interceptors.response.use(
   (error) => {
     if (error.response) {
       const { status, data } = error.response;
-      const errorMsg = data?.message || '';
 
       // Trường hợp 1: Tài khoản bị khóa bởi Admin -> Hiển thị popup cảnh báo trước
+      // QUAN TRỌNG: KHÔNG xóa token ngay ở đây để tránh vòng lặp 401 kích hoạt redirect
+      // Token chỉ bị xóa khi user bấm "Đóng & Đăng Xuất" trong modal
       if (status === 403 && data?.status === 'banned') {
-        if (localStorage.getItem('token')) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('userEmail');
-          localStorage.removeItem('role');
-          localStorage.removeItem('user');
-          // Dispatch event để App.jsx hiển thị modal (KHÔNG redirect trực tiếp)
+        // Chống gọi lặp lại: chỉ dispatch event lần đầu
+        if (!window.__accountBanned) {
+          window.__accountBanned = true;
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
           }));
@@ -41,8 +39,9 @@ API.interceptors.response.use(
       }
 
       // Trường hợp 2: Token hết hạn hoặc không hợp lệ (401) -> Đăng xuất im lặng
+      // Bỏ qua nếu tài khoản đang trong trạng thái bị khóa (modal đang hiển thị)
       if (status === 401) {
-        if (localStorage.getItem('token')) {
+        if (!window.__accountBanned && localStorage.getItem('token')) {
           localStorage.clear();
           window.location.href = '/login';
         }

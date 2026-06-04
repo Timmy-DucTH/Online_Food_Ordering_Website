@@ -347,7 +347,8 @@ const Home = ({ openPendingModal }) => {
 
   // Fetch notifications
   const loadNotifications = useCallback(async () => {
-    if (!isLoggedIn) return;
+    // Dừng polling nếu đang trong trạng thái bị khóa (tránh vòng lặp 401)
+    if (!isLoggedIn || window.__accountBanned) return;
     try {
       const res = await fetch('/api/notifications', {
         headers: {
@@ -356,13 +357,11 @@ const Home = ({ openPendingModal }) => {
       });
 
       // Kiểm tra tài khoản bị khóa qua HTTP 403
+      // QUAN TRỌNG: KHÔNG xóa token ngay - để tránh kích hoạt 401 redirect trước khi modal hiện
       if (res.status === 403) {
         const data = await res.json();
-        if (data?.status === 'banned') {
-          localStorage.removeItem('token');
-          localStorage.removeItem('userEmail');
-          localStorage.removeItem('role');
-          localStorage.removeItem('user');
+        if (data?.status === 'banned' && !window.__accountBanned) {
+          window.__accountBanned = true;
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
           }));
@@ -381,11 +380,8 @@ const Home = ({ openPendingModal }) => {
           n.type === 'system' &&
           (n.title?.includes('bị khóa') || n.title?.includes('bi khoa'))
         );
-        if (banNotif && localStorage.getItem('token')) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('userEmail');
-          localStorage.removeItem('role');
-          localStorage.removeItem('user');
+        if (banNotif && localStorage.getItem('token') && !window.__accountBanned) {
+          window.__accountBanned = true;
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: banNotif.message || banNotif.title || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
           }));
