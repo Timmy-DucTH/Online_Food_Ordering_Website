@@ -1052,8 +1052,6 @@ const Home = ({ openPendingModal }) => {
             ============================================== */}
         <div style={{ flex: 1, minWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-
-
           {/* ACTIVE TAB: ORDER VIEW (DEFAULT INTEGRATED HOME VIEW) */}
           {(activeTab === 'order' || activeTab === 'feed') && (
             <>
