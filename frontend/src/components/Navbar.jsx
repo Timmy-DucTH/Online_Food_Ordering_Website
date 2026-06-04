@@ -79,6 +79,23 @@ const Navbar = ({
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+
+      // Kiểm tra trường hợp tài khoản bị khóa khi polling thông báo
+      if (res.status === 403) {
+        const data = await res.json();
+        if (data?.status === 'banned') {
+          // Xóa thông tin đăng nhập
+          localStorage.removeItem('token');
+          localStorage.removeItem('userEmail');
+          localStorage.removeItem('role');
+          // Phát sự kiện để App.jsx hiển thị modal cảnh báo
+          window.dispatchEvent(new CustomEvent('account-banned', {
+            detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
+          }));
+        }
+        return;
+      }
+
       const data = await res.json();
       if (data.status === 'success') {
         setNotifications(data.data);

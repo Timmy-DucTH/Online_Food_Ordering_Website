@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import RegisterLogin from './pages/RegisterLogin';
@@ -30,8 +30,30 @@ function App() {
   
   const [showPendingModal, setShowPendingModal] = useState(false);
 
+  // State cho modal cảnh báo khóa tài khoản
+  const [banMessage, setBanMessage] = useState(null);
+
   const openPendingModal = () => setShowPendingModal(true);
   const closePendingModal = () => setShowPendingModal(false);
+
+  // Lắng nghe sự kiện khóa tài khoản từ API interceptor và Navbar polling
+  useEffect(() => {
+    const handleAccountBanned = (event) => {
+      const message = event.detail?.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.';
+      setBanMessage(message);
+      setIsLoggedIn(false);
+    };
+
+    window.addEventListener('account-banned', handleAccountBanned);
+    return () => {
+      window.removeEventListener('account-banned', handleAccountBanned);
+    };
+  }, []);
+
+  const handleCloseBanModal = () => {
+    setBanMessage(null);
+    window.location.href = '/login';
+  };
 
   return (
     <BrowserRouter>
@@ -60,6 +82,124 @@ function App() {
         />
         
       </Routes>
+
+      {/* =====================================================
+          🚫 MODAL CẢNH BÁO KHÓA TÀI KHOẢN - TOÀN CỤC
+          Hiển thị ngay giữa màn hình khi admin khóa tài khoản
+          ===================================================== */}
+      {banMessage && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0,
+          width: '100%', height: '100%',
+          backgroundColor: 'rgba(3, 7, 18, 0.92)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 999999,
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            backgroundColor: '#111827',
+            border: '1.5px solid #ef4444',
+            padding: '40px 35px',
+            borderRadius: '18px',
+            boxShadow: '0 0 60px rgba(239, 68, 68, 0.25), 0 25px 50px rgba(0, 0, 0, 0.7)',
+            textAlign: 'center',
+            maxWidth: '480px',
+            width: '90%',
+            boxSizing: 'border-box',
+            animation: 'slideUp 0.35s ease-out'
+          }}>
+            {/* Icon cảnh báo */}
+            <div style={{ fontSize: '62px', marginBottom: '18px', lineHeight: 1 }}>🔒</div>
+
+            {/* Tiêu đề */}
+            <h2 style={{
+              margin: '0 0 10px 0',
+              color: '#ef4444',
+              fontWeight: '800',
+              fontSize: '22px',
+              letterSpacing: '0.3px'
+            }}>
+              Tài Khoản Đã Bị Khóa
+            </h2>
+
+            {/* Đường kẻ phân cách */}
+            <div style={{
+              width: '50px', height: '3px',
+              backgroundColor: '#ef4444',
+              borderRadius: '99px',
+              margin: '0 auto 20px auto',
+              opacity: 0.6
+            }} />
+
+            {/* Nội dung lý do khóa */}
+            <div style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.07)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: '10px',
+              padding: '16px 20px',
+              marginBottom: '28px',
+              textAlign: 'left'
+            }}>
+              <p style={{
+                color: '#fca5a5',
+                fontSize: '14px',
+                lineHeight: '1.7',
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word'
+              }}>
+                {banMessage}
+              </p>
+            </div>
+
+            {/* Ghi chú nhỏ */}
+            <p style={{
+              color: '#64748b',
+              fontSize: '12px',
+              marginBottom: '24px',
+              lineHeight: '1.5'
+            }}>
+              Bạn sẽ được tự động đăng xuất sau khi đóng thông báo này. Nếu có thắc mắc, vui lòng liên hệ bộ phận hỗ trợ TasteByte.
+            </p>
+
+            {/* Nút đóng */}
+            <button
+              onClick={handleCloseBanModal}
+              style={{
+                width: '100%',
+                padding: '14px 0',
+                backgroundColor: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontWeight: '700',
+                fontSize: '15px',
+                letterSpacing: '0.3px',
+                boxShadow: '0 4px 15px rgba(239, 68, 68, 0.35)',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = '#dc2626';
+                e.target.style.transform = 'translateY(-1px)';
+                e.target.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.45)';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = '#ef4444';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 4px 15px rgba(239, 68, 68, 0.35)';
+              }}
+            >
+              Đóng &amp; Đăng Xuất
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* MODAL THÔNG BÁO BẢO TRÌ TOÀN CỤC */}
       {showPendingModal && (
@@ -137,8 +277,24 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </BrowserRouter>
   );
 }
 
-export default App;
+export default App;
