@@ -947,7 +947,7 @@ const Home = ({ openPendingModal }) => {
   });
 
   return (
-    <div style={{ backgroundColor: currentTheme.bg, minHeight: '100vh', width: '100%', margin: 0, padding: 0, color: currentTheme.text, fontFamily: "'Inter', sans-serif", transition: 'background-color 0.3s, color 0.3s' }}>
+    <div className={theme} style={{ backgroundColor: currentTheme.bg, minHeight: '100vh', width: '100%', margin: 0, padding: 0, color: currentTheme.text, fontFamily: "'Inter', sans-serif", transition: 'background-color 0.3s, color 0.3s' }}>
       
       {/* Toast Alert list */}
       <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 99999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
