@@ -72,7 +72,8 @@ const Navbar = ({
 
   // Load notifications if not passed as prop
   const loadInternalNotifications = async () => {
-    if (hasPropNotifications || !isLoggedIn) return;
+    // Dừng nếu không cần hoặc tài khoản đang bị khóa (tránh vòng lặp 401)
+    if (hasPropNotifications || !isLoggedIn || window.__accountBanned) return;
     try {
       const res = await fetch('/api/notifications', {
         headers: {
@@ -81,14 +82,20 @@ const Navbar = ({
       });
 
       // Kiểm tra trường hợp tài khoản bị khóa khi polling thông báo
+      // QUAN TRỌNG: KHÔNG xóa token ngay - để tránh kích hoạt 401 redirect trước khi modal hiện
       if (res.status === 403) {
         const data = await res.json();
+<<<<<<< HEAD
         if (data?.status === 'banned') {
           // Xóa thông tin đăng nhập
           localStorage.removeItem('token');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('role');
           localStorage.removeItem('user');
+=======
+        if (data?.status === 'banned' && !window.__accountBanned) {
+          window.__accountBanned = true;
+>>>>>>> e4ca3f21163f213925fa4f3a36816de651a6a7cd
           // Phát sự kiện để App.jsx hiển thị modal cảnh báo
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }

@@ -135,7 +135,15 @@ exports.banUser = async (req, res) => {
 // 3. Mở khóa tài khoản người dùng
 exports.unbanUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, { status: 'active' }, { new: true });
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        status: 'active',
+        banned_until: null,   // Xóa hạn khóa tạm thời
+        ban_reason: ''        // Xóa lý do khóa
+      },
+      { new: true }
+    );
     if (!user) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy người dùng!' });
 
     await AccountLog.create({
@@ -143,6 +151,26 @@ exports.unbanUser = async (req, res) => {
       action_type: 'unban',
       reason: 'Admin mở khóa tài khoản thủ công',
       performed_by: 'ADMIN_PANEL'
+    });
+
+    // ✅ QUAN TRỌNG: Xóa tất cả thông báo "bị khóa" chưa đọc
+    // Nếu không xóa, frontend polling sẽ tìm thấy thông báo này và tưởng user vẫn bị khóa
+    await Notification.deleteMany({
+      user_id: req.params.id,
+      is_read: false,
+      type: 'system',
+      $or: [
+        { title: { $regex: 'bị khóa', $options: 'i' } },
+        { title: { $regex: 'bi khoa', $options: 'i' } }
+      ]
+    });
+
+    // Gửi thông báo mở khóa thành công cho user
+    await Notification.create({
+      user_id: req.params.id,
+      title: 'Tài khoản của bạn đã được mở khóa',
+      message: 'Tài khoản của bạn đã được quản trị viên mở khóa. Bạn có thể đăng nhập và sử dụng dịch vụ bình thường.',
+      type: 'system'
     });
 
     res.status(200).json({ status: 'success', message: `Đã mở khóa tài khoản ${user.email} thành công!` });
