@@ -9,6 +9,23 @@ exports.getRevenueReport = async (req, res) => {
     const { restaurantId } = req.params;
     const { startDate, endDate } = req.query; // Nhận định dạng YYYY-MM-DD từ FrontEnd
 
+    // Kiểm tra quyền sở hữu cửa hàng (Chủ quán chỉ được xem của chính mình, Admin xem tất cả)
+    const Restaurant = require('../models/restaurant');
+    if (req.user.role === 'merchant') {
+      const myRestaurant = await Restaurant.findOne({ owner_id: req.user.id });
+      if (!myRestaurant || myRestaurant._id.toString() !== restaurantId) {
+        return res.status(403).json({
+          status: 'fail',
+          message: 'Từ chối truy cập! Bạn không có quyền xem báo cáo doanh thu của cửa hàng khác.'
+        });
+      }
+    } else if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Từ chối truy cập! Bạn không có quyền thực hiện chức năng này.'
+      });
+    }
+
     // RÀNG BUỘC QĐ 10: Ngày bắt đầu bắt buộc phải nhỏ hơn ngày kết thúc
     if (new Date(startDate) >= new Date(endDate)) {
       return res.status(400).json({
@@ -66,6 +83,23 @@ exports.getRevenueReport = async (req, res) => {
 exports.getTopSellingItems = async (req, res) => {
   try {
     const { restaurantId } = req.params;
+
+    // Kiểm tra quyền sở hữu cửa hàng (Chủ quán chỉ được xem của chính mình, Admin xem tất cả)
+    const Restaurant = require('../models/restaurant');
+    if (req.user.role === 'merchant') {
+      const myRestaurant = await Restaurant.findOne({ owner_id: req.user.id });
+      if (!myRestaurant || myRestaurant._id.toString() !== restaurantId) {
+        return res.status(403).json({
+          status: 'fail',
+          message: 'Từ chối truy cập! Bạn không có quyền xem thống kê món ăn của cửa hàng khác.'
+        });
+      }
+    } else if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Từ chối truy cập! Bạn không có quyền thực hiện chức năng này.'
+      });
+    }
 
     const topItems = await Order.aggregate([
       {

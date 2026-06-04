@@ -53,6 +53,7 @@ export const forgotPasswordAPI = (email) => API.post('/auth/forgot-password', { 
 // 🌟 HÀM MỚI BỔ SUNG: Tạo đơn hàng và Lấy lịch sử đơn hàng
 export const createOrderAPI = (orderData) => API.post('/orders/create', orderData);
 export const getMyOrdersAPI = () => API.get('/orders/my-orders');
+export const createReviewAPI = (reviewData) => API.post('/reviews', reviewData);
 
 // 🌟 HÀM MỚI BỔ SUNG: Lấy thông tin tài khoản đăng nhập hiện tại & Báo cáo thống kê thật
 export const getProfileAPI = () => API.get('/auth/me');

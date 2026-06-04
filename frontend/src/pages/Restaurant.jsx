@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import API, { getRevenueReportAPI, getTopSellingItemsAPI, getProfileAPI } from '../services/api';
-import ReviewSection from '../components/ReviewSection';
 
 const Restaurant = ({ openPendingModal }) => {
   const navigate = useNavigate();
@@ -806,49 +805,64 @@ const Restaurant = ({ openPendingModal }) => {
                           </td>
                         </tr>
                       ) : (
-                        merchantOrders.map((order) => (
-                          <tr key={order._id}>
-                            <td style={tableTdStyle}>
-                              <code style={{ color: '#ffffff', fontWeight: 'bold' }}>#{order._id?.substring(18)}</code>
-                            </td>
-                            <td style={tableTdStyle}>
-                              <div>
-                                <b>{order.user_id?.full_name || 'Khách vãng lai'}</b>
-                                <div style={{ fontSize: '11px', color: '#64748b' }}>{order.user_id?.email || 'Ẩn danh'}</div>
-                                {order.user_id?.phone && <div style={{ fontSize: '11px', color: '#64748b' }}>SĐT: {order.user_id?.phone}</div>}
-                              </div>
-                            </td>
-                            <td style={tableTdStyle}>
-                              <span style={{ color: '#10b981', fontWeight: '700' }}>{order.total_price?.toLocaleString('vi-VN')}đ</span>
-                            </td>
-                            <td style={tableTdStyle}>
-                              <span style={{ fontSize: '13px', color: '#fbbf24', fontWeight: '500' }}>{order.distance_km || 0} km</span>
-                            </td>
-                            <td style={tableTdStyle}>
-                              <span style={{ fontSize: '13px', color: '#94a3b8' }}>{order.shipping_address || 'Nhận tại quầy'}</span>
-                            </td>
-                            <td style={tableTdStyle}>
-                              <span style={{ 
-                                padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold',
-                                backgroundColor: order.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : order.status === 'pending' ? 'rgba(217, 119, 6, 0.1)' : 'rgba(225, 29, 72, 0.1)',
-                                color: order.status === 'completed' ? '#10b981' : order.status === 'pending' ? '#f59e0b' : '#e11d48'
-                              }}>
-                                {order.status === 'pending' ? '⌛ Chờ duyệt' : order.status === 'completed' ? '✓ Thành công' : '✕ Đã hủy'}
-                              </span>
-                            </td>
-                            <td style={tableTdStyle}>
-                              <select 
-                                value={order.status} 
-                                onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
-                                style={{ padding: '6px', borderRadius: '6px', border: '1px solid #1f2937', fontSize: '13px', backgroundColor: '#0b0f19', color: '#ffffff', cursor: 'pointer', outline: 'none' }}
-                              >
-                                <option value="pending" style={{ backgroundColor: '#0b0f19' }}>⌛ Chờ xử lý</option>
-                                <option value="completed" style={{ backgroundColor: '#0b0f19' }}>✓ Đã giao hàng</option>
-                                <option value="cancelled" style={{ backgroundColor: '#0b0f19' }}>❌ Hủy đơn ảo</option>
-                              </select>
-                            </td>
-                          </tr>
-                        ))
+                        merchantOrders.map((order) => {
+                          const statusConfig = {
+                            pending:    { label: '⌛ Chờ thanh toán', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+                            processing: { label: '🚚 Vận chuyển',     color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+                            shipping:   { label: '📦 Chờ giao hàng',  color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+                            completed:  { label: '✓ Hoàn thành',     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+                            cancelled:  { label: '❌ Đã hủy',         color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+                            refund:     { label: '🔄 Trả hàng/Hoàn tiền', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+                          };
+                          const config = statusConfig[order.status] || { label: order.status, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' };
+
+                          return (
+                            <tr key={order._id}>
+                              <td style={tableTdStyle}>
+                                <code style={{ color: '#ffffff', fontWeight: 'bold' }}>#{order._id?.substring(18)}</code>
+                              </td>
+                              <td style={tableTdStyle}>
+                                <div>
+                                  <b>{order.user_id?.full_name || 'Khách vãng lai'}</b>
+                                  <div style={{ fontSize: '11px', color: '#64748b' }}>{order.user_id?.email || 'Ẩn danh'}</div>
+                                  {order.user_id?.phone && <div style={{ fontSize: '11px', color: '#64748b' }}>SĐT: {order.user_id?.phone}</div>}
+                                </div>
+                              </td>
+                              <td style={tableTdStyle}>
+                                <span style={{ color: '#10b981', fontWeight: '700' }}>{order.total_price?.toLocaleString('vi-VN')}đ</span>
+                              </td>
+                              <td style={tableTdStyle}>
+                                <span style={{ fontSize: '13px', color: '#fbbf24', fontWeight: '500' }}>{order.distance_km || 0} km</span>
+                              </td>
+                              <td style={tableTdStyle}>
+                                <span style={{ fontSize: '13px', color: '#94a3b8' }}>{order.shipping_address || 'Nhận tại quầy'}</span>
+                              </td>
+                              <td style={tableTdStyle}>
+                                <span style={{ 
+                                  padding: '4px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold',
+                                  backgroundColor: config.bg,
+                                  color: config.color
+                                }}>
+                                  {config.label}
+                                </span>
+                              </td>
+                              <td style={tableTdStyle}>
+                                <select 
+                                  value={order.status} 
+                                  onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
+                                  style={{ padding: '6px', borderRadius: '6px', border: '1px solid #1f2937', fontSize: '13px', backgroundColor: '#0b0f19', color: '#ffffff', cursor: 'pointer', outline: 'none' }}
+                                >
+                                  <option value="pending" style={{ backgroundColor: '#0b0f19' }}>⌛ Chờ thanh toán</option>
+                                  <option value="processing" style={{ backgroundColor: '#0b0f19' }}>🚚 Vận chuyển</option>
+                                  <option value="shipping" style={{ backgroundColor: '#0b0f19' }}>📦 Chờ giao hàng</option>
+                                  <option value="completed" style={{ backgroundColor: '#0b0f19' }}>✓ Hoàn thành</option>
+                                  <option value="cancelled" style={{ backgroundColor: '#0b0f19' }}>❌ Đã hủy</option>
+                                  <option value="refund" style={{ backgroundColor: '#0b0f19' }}>🔄 Trả hàng/Hoàn tiền</option>
+                                </select>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
