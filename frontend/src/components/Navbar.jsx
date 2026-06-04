@@ -88,6 +88,7 @@ const Navbar = ({
           localStorage.removeItem('token');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('role');
+          localStorage.removeItem('user');
           // Phát sự kiện để App.jsx hiển thị modal cảnh báo
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
@@ -198,6 +199,9 @@ const Navbar = ({
     localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('role');
+    localStorage.removeItem('user');
+    localStorage.removeItem('restaurantStatus');
+    localStorage.removeItem('pendingRestaurantData');
     window.location.href = '/'; 
   };
 

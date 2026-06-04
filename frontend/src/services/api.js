@@ -31,6 +31,7 @@ API.interceptors.response.use(
           localStorage.removeItem('token');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('role');
+          localStorage.removeItem('user');
           // Dispatch event để App.jsx hiển thị modal (KHÔNG redirect trực tiếp)
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }

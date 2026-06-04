@@ -362,6 +362,7 @@ const Home = ({ openPendingModal }) => {
           localStorage.removeItem('token');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('role');
+          localStorage.removeItem('user');
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
           }));
@@ -384,6 +385,7 @@ const Home = ({ openPendingModal }) => {
           localStorage.removeItem('token');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('role');
+          localStorage.removeItem('user');
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: banNotif.message || banNotif.title || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
           }));
