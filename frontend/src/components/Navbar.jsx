@@ -88,6 +88,7 @@ const Navbar = ({
           localStorage.removeItem('token');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('role');
+          localStorage.removeItem('user');
           // Phát sự kiện để App.jsx hiển thị modal cảnh báo
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
@@ -198,6 +199,9 @@ const Navbar = ({
     localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('role');
+    localStorage.removeItem('user');
+    localStorage.removeItem('restaurantStatus');
+    localStorage.removeItem('pendingRestaurantData');
     window.location.href = '/'; 
   };
 
@@ -443,7 +447,7 @@ const Navbar = ({
               onMouseLeave={() => setIsUserMenuOpen(false)}
             >
               <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: currentTheme.primary, color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>U</div>
-              <span style={{ color: currentTheme.text }}>{localStorage.getItem('userEmail') || 'duyquang536'}</span>
+              <span style={{ color: currentTheme.text }}>{localStorage.getItem('userEmail') || 'Tài khoản'}</span>
 
               {/* USER DROP DOWN MENU */}
               {isUserMenuOpen && (

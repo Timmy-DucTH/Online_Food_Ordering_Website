@@ -119,8 +119,8 @@ exports.createOrder = async (req, res) => {
       subtotal += item.quantity * item.price;
     });
 
-    // 2. Phí vận chuyển = 5,000đ/km
-    const shipping_fee = finalDistance * 5000;
+    // 2. Phí vận chuyển = 2,000đ/km
+    const shipping_fee = finalDistance * 3000;
 
     // 3. Tổng tiền đơn hàng = thành tiền món ăn + phí vận chuyển
     const total_price = subtotal + shipping_fee;

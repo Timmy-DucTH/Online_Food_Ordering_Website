@@ -17,11 +17,11 @@ const Profile = ({ openPendingModal }) => {
   const [orderStatusTab, setOrderStatusTab] = useState('all');
 
   // State thông tin người dùng
-  const [username, setUsername] = useState(localStorage.getItem('userEmail')?.split('@')[0] || 'duyquang536');
-  const [fullName, setFullName] = useState('Nguyễn Duy Quang');
-  const [email, setEmail] = useState(localStorage.getItem('userEmail') || 'duyquang536@gmail.com');
-  const [phone, setPhone] = useState('0987654321');
-  const [gender, setGender] = useState('Nam');
+  const [username, setUsername] = useState(localStorage.getItem('userEmail')?.split('@')[0] || '');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState(localStorage.getItem('userEmail') || '');
+  const [phone, setPhone] = useState('');
+  const [gender, setGender] = useState('');
   const [creditScore, setCreditScore] = useState(100);
   
   const [birthDay, setBirthDay] = useState('27');

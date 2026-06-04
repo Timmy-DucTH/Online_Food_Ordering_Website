@@ -36,12 +36,24 @@ function App() {
   const openPendingModal = () => setShowPendingModal(true);
   const closePendingModal = () => setShowPendingModal(false);
 
-  // Lắng nghe sự kiện khóa tài khoản từ API interceptor và Navbar polling
+  // Hàm xóa toàn bộ dữ liệu phiên đăng nhập (giữ lại theme và các cài đặt khác)
+  const clearAuthData = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('user');        // ⚠️ Quan trọng: key này hay bị bỏ sót!
+    localStorage.removeItem('restaurantStatus');
+    localStorage.removeItem('pendingRestaurantData');
+  };
+
+  // Lắng nghe sự kiện khóa tài khoản từ API interceptor và polling
   useEffect(() => {
     const handleAccountBanned = (event) => {
       const message = event.detail?.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.';
+      // Chỉ set message để hiển thị modal — KHÔNG setIsLoggedIn(false) ngay
+      // vì các trang con (Home.jsx) có guard "if (!isLoggedIn) navigate('/login')"
+      // sẽ redirect mất trước khi modal kịp render
       setBanMessage(message);
-      setIsLoggedIn(false);
     };
 
     window.addEventListener('account-banned', handleAccountBanned);
@@ -68,9 +80,7 @@ function App() {
         if (res.status === 403) {
           const data = await res.json();
           if (data?.status === 'banned') {
-            localStorage.removeItem('token');
-            localStorage.removeItem('userEmail');
-            localStorage.removeItem('role');
+            clearAuthData();
             window.dispatchEvent(new CustomEvent('account-banned', {
               detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
             }));
@@ -88,9 +98,7 @@ function App() {
               (n.title?.includes('bị khóa') || n.title?.includes('bi khoa'))
             );
             if (banNotif && localStorage.getItem('token')) {
-              localStorage.removeItem('token');
-              localStorage.removeItem('userEmail');
-              localStorage.removeItem('role');
+              clearAuthData();
               window.dispatchEvent(new CustomEvent('account-banned', {
                 detail: { message: banNotif.message || banNotif.title || 'Tài khoản của bạn đã bị khóa.' }
               }));
@@ -110,6 +118,8 @@ function App() {
 
   const handleCloseBanModal = () => {
     setBanMessage(null);
+    setIsLoggedIn(false);
+    clearAuthData();
     window.location.href = '/login';
   };
 

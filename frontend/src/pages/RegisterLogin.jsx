@@ -92,6 +92,11 @@ const RegisterLogin = ({ setIsLoggedIn }) => {
           setConfirmPassword('');
         }
       } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userEmail');
+
         const res = await loginUser({ email, password });
         if (res.data.status === 'success') {
           localStorage.setItem('token', res.data.token);
@@ -118,6 +123,13 @@ const RegisterLogin = ({ setIsLoggedIn }) => {
         }
       }
     } catch (err) {
+      if (!isRegister && !isForgotPassword) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userEmail');
+        if (setIsLoggedIn) setIsLoggedIn(false);
+      }
       setErrorMsg(err.response?.data?.message || 'Có lỗi xảy ra trong quá trình xử lý!');
     }
   };
