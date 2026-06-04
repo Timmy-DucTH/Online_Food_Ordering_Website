@@ -50,6 +50,64 @@ function App() {
     };
   }, []);
 
+  // Polling độc lập kiểm tra trạng thái khóa tài khoản toàn cục (mọi trang)
+  // Chạy mỗi 8 giây, hoạt động cả khi backend chưa restart
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const checkBanStatus = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const res = await fetch('/api/notifications', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        // Trường hợp 1: Backend đã restart và middleware phát hiện ban -> 403
+        if (res.status === 403) {
+          const data = await res.json();
+          if (data?.status === 'banned') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('role');
+            window.dispatchEvent(new CustomEvent('account-banned', {
+              detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
+            }));
+          }
+          return;
+        }
+
+        // Trường hợp 2: Backend chưa restart -> 200 OK, nhưng kiểm tra nội dung thông báo
+        if (res.status === 200) {
+          const data = await res.json();
+          if (data?.status === 'success' && Array.isArray(data.data)) {
+            const banNotif = data.data.find(n =>
+              !n.is_read &&
+              n.type === 'system' &&
+              (n.title?.includes('bị khóa') || n.title?.includes('bi khoa'))
+            );
+            if (banNotif && localStorage.getItem('token')) {
+              localStorage.removeItem('token');
+              localStorage.removeItem('userEmail');
+              localStorage.removeItem('role');
+              window.dispatchEvent(new CustomEvent('account-banned', {
+                detail: { message: banNotif.message || banNotif.title || 'Tài khoản của bạn đã bị khóa.' }
+              }));
+            }
+          }
+        }
+      } catch (e) {
+        // Bỏ qua lỗi mạng
+      }
+    };
+
+    // Chạy ngay khi user vừa đăng nhập
+    checkBanStatus();
+    const interval = setInterval(checkBanStatus, 8000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn]);
+
   const handleCloseBanModal = () => {
     setBanMessage(null);
     window.location.href = '/login';

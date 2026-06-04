@@ -354,9 +354,40 @@ const Home = ({ openPendingModal }) => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+
+      // Kiểm tra tài khoản bị khóa qua HTTP 403
+      if (res.status === 403) {
+        const data = await res.json();
+        if (data?.status === 'banned') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userEmail');
+          localStorage.removeItem('role');
+          window.dispatchEvent(new CustomEvent('account-banned', {
+            detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
+          }));
+        }
+        return;
+      }
+
       const data = await res.json();
       if (data.status === 'success') {
         setNotifications(data.data);
+
+        // Lưới an toàn: kiểm tra nội dung thông báo để phát hiện khóa tài khoản
+        // (hoạt động ngay cả khi backend chưa được restart)
+        const banNotif = data.data.find(n =>
+          !n.is_read &&
+          n.type === 'system' &&
+          (n.title?.includes('bị khóa') || n.title?.includes('bi khoa'))
+        );
+        if (banNotif && localStorage.getItem('token')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userEmail');
+          localStorage.removeItem('role');
+          window.dispatchEvent(new CustomEvent('account-banned', {
+            detail: { message: banNotif.message || banNotif.title || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
+          }));
+        }
       }
     } catch (e) {
       console.error('Error fetching notifications:', e);
