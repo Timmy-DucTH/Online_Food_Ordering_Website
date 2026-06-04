@@ -976,16 +976,14 @@ const Home = ({ openPendingModal }) => {
       />
 
       {/* CORE 3-COLUMN LAYOUT CONTAINER */}
-      <div style={{ display: 'flex', maxWidth: '1250px', margin: '0 auto', padding: '24px 16px', gap: '24px', alignItems: 'flex-start' }}>
+      <div className="home-layout-container">
         
         {/* ==============================================
             LEFT COLUMN (SIDEBAR): SYSTEM NAVIGATION (20%)
             ============================================== */}
-        <div style={{ 
-          width: '20%', minWidth: '220px', flexShrink: 0, 
+        <div className="home-left-column" style={{ 
           backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
-          borderRadius: '16px', padding: '20px 14px', boxShadow: `0 10px 30px ${currentTheme.shadow}`,
-          position: 'sticky', top: '90px'
+          borderRadius: '16px', padding: '20px 14px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', padding: '0 8px' }}>
             <h4 style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', color: currentTheme.textMuted, letterSpacing: '1px' }}>MENU CHÍNH</h4>
@@ -1050,7 +1048,7 @@ const Home = ({ openPendingModal }) => {
         {/* ==============================================
             MIDDLE COLUMN: MAIN VIEWPORT (55%)
             ============================================== */}
-        <div style={{ flex: 1, minWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="home-middle-column">
           
           {/* ACTIVE TAB: ORDER VIEW (DEFAULT INTEGRATED HOME VIEW) */}
           {(activeTab === 'order' || activeTab === 'feed') && (
@@ -1833,9 +1831,8 @@ const Home = ({ openPendingModal }) => {
         {/* ==============================================
             RIGHT COLUMN (SIDEBAR): MINI CART & INTERACTION (25%)
             ============================================== */}
-        <div style={{ 
-          width: '25%', minWidth: '260px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '20px',
-          position: 'sticky', top: '90px'
+        <div className="home-right-column" style={{ 
+          display: 'flex', flexDirection: 'column', gap: '20px'
         }}>
           
 

@@ -460,7 +460,7 @@ const Navbar = ({
       </div>
 
       {/* MAIN NAVBAR */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 10px 18px 10px' }}>
+      <div className="navbar-main-container">
         {/* LOGO */}
         <h1 style={{ color: currentTheme.primary, margin: 0, cursor: 'pointer', fontSize: '30px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => navigate('/home')}>
           Taste<span style={{ color: currentTheme.logoText }}>Byte</span> <span style={{ fontSize: '26px' }}>{currentTheme.logoIcon}</span>
