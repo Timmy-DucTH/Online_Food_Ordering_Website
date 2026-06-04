@@ -1021,7 +1021,10 @@ const Restaurant = ({ openPendingModal }) => {
                 </div>
               </div>
             )}
-            {/* Review Section removed from merchant portal */}
+            <br></br>
+            {activeTab === 'reviews' && (
+              <ReviewSection restaurantId={shopData?._id} />
+            )}
           </div>
 
         </div>
