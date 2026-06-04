@@ -25,14 +25,13 @@ API.interceptors.response.use(
       const { status, data } = error.response;
       const errorMsg = data?.message || '';
 
-      // Ưu tiên xử lý trường hợp tài khoản bị khóa - Hiển thị popup trước khi logout
+      // Trường hợp 1: Tài khoản bị khóa bởi Admin -> Hiển thị popup cảnh báo trước
       if (status === 403 && data?.status === 'banned') {
         if (localStorage.getItem('token')) {
-          // Xóa thông tin đăng nhập ngay lập tức
           localStorage.removeItem('token');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('role');
-          // Phát sự kiện tùy chỉnh để App.jsx hiển thị modal cảnh báo
+          // Dispatch event để App.jsx hiển thị modal (KHÔNG redirect trực tiếp)
           window.dispatchEvent(new CustomEvent('account-banned', {
             detail: { message: data.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' }
           }));
@@ -40,17 +39,16 @@ API.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Xử lý các lỗi xác thực thông thường (401 / 403 khác / 404 not found)
-      if (
-        status === 401 ||
-        status === 403 ||
-        (status === 404 && (errorMsg.includes('không tồn tại') || errorMsg.includes('Not Found')))
-      ) {
+      // Trường hợp 2: Token hết hạn hoặc không hợp lệ (401) -> Đăng xuất im lặng
+      if (status === 401) {
         if (localStorage.getItem('token')) {
           localStorage.clear();
           window.location.href = '/login';
         }
       }
+
+      // Trường hợp 3: 403 thông thường (sai quyền, không phải bị khóa) -> Bỏ qua, không redirect
+      // Trường hợp 4: 404 không tồn tại -> Bỏ qua
     }
     return Promise.reject(error);
   }

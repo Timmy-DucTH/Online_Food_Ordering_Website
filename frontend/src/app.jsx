@@ -36,12 +36,14 @@ function App() {
   const openPendingModal = () => setShowPendingModal(true);
   const closePendingModal = () => setShowPendingModal(false);
 
-  // Lắng nghe sự kiện khóa tài khoản từ API interceptor và Navbar polling
+  // Lắng nghe sự kiện khóa tài khoản từ API interceptor và polling
   useEffect(() => {
     const handleAccountBanned = (event) => {
       const message = event.detail?.message || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.';
+      // Chỉ set message để hiển thị modal — KHÔNG setIsLoggedIn(false) ngay
+      // vì các trang con (Home.jsx) có guard "if (!isLoggedIn) navigate('/login')"
+      // sẽ redirect mất trước khi modal kịp render
       setBanMessage(message);
-      setIsLoggedIn(false);
     };
 
     window.addEventListener('account-banned', handleAccountBanned);
@@ -110,6 +112,7 @@ function App() {
 
   const handleCloseBanModal = () => {
     setBanMessage(null);
+    setIsLoggedIn(false);
     window.location.href = '/login';
   };
 
