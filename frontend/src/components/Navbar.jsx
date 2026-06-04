@@ -447,7 +447,7 @@ const Navbar = ({
               onMouseLeave={() => setIsUserMenuOpen(false)}
             >
               <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: currentTheme.primary, color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>U</div>
-              <span style={{ color: currentTheme.text }}>{localStorage.getItem('userEmail') || 'duyquang536'}</span>
+              <span style={{ color: currentTheme.text }}>{localStorage.getItem('userEmail') || 'Tài khoản'}</span>
 
               {/* USER DROP DOWN MENU */}
               {isUserMenuOpen && (
