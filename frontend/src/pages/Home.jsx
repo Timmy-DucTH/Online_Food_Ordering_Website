@@ -1621,7 +1621,7 @@ const Home = ({ openPendingModal }) => {
             }}>
               {/* Chat Left Column */}
               <div style={{ width: '35%', borderRight: `1px solid ${currentTheme.border}`, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '16px', borderBottom: `1px solid ${currentTheme.border}`, fontWeight: '800', color: currentTheme.primary, fontSize: '15px' }}>
+                <div style={{ padding: '16px', borderBottom: `1px solid ${currentTheme.border}`, fontWeight: '800', color: currentTheme.primary, fontSize: '15px', fontFamily: vietnameseTextFont, lineHeight: 1.3, letterSpacing: 0 }}>
                   Hội thoại
                 </div>
                 
@@ -1797,8 +1797,8 @@ const Home = ({ openPendingModal }) => {
               backgroundColor: currentTheme.panel, border: `1px solid ${currentTheme.border}`, 
               borderRadius: '16px', padding: '24px', boxShadow: `0 10px 30px ${currentTheme.shadow}`
             }}>
-              <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: '800', color: currentTheme.primary }}>
-                🔔 Hộp Thư Thông Báo
+              <h3 style={{ margin: '0 0 20px', fontSize: '18px', fontWeight: '800', color: currentTheme.primary, fontFamily: vietnameseTextFont, lineHeight: 1.3, letterSpacing: 0 }}>
+                <span style={{ fontFamily: emojiTextFont, lineHeight: 1 }}>🔔</span> Hộp Thư Thông Báo
               </h3>
               
               {notifications.length === 0 ? (

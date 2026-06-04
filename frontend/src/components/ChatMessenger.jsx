@@ -14,7 +14,7 @@ const ChatMessenger = ({
     <div style={{ display: 'flex', height: '550px', backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
       {/* Chat - Left Pane: Contact list */}
       <div style={{ width: '35%', minWidth: '150px', borderRight: '1px solid #1f2937', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '14px', borderBottom: '1px solid #1f2937', fontWeight: 'bold', color: '#00e676', fontSize: '15px' }}>Hội thoại</div>
+        <div style={{ padding: '14px', borderBottom: '1px solid #1f2937', fontWeight: 'bold', color: '#00e676', fontSize: '15px', fontFamily: 'var(--sans)', lineHeight: 1.3 }}>Hội thoại</div>
         
         {/* 🔍 Search box (matching email/username only) */}
         <div style={{ padding: '10px 14px', borderBottom: '1px solid #1f2937' }}>
